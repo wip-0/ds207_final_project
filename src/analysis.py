@@ -9,13 +9,9 @@ Description: Exploratory data analysis interfaces.
 import re
 import pandas as pd
 import numpy as np
-import matplotlib
-matplotlib.use('Qt5agg')
-
-import seaborn as sns
 from typing import Union
 from statsmodels.stats.descriptivestats import describe
-from stats import contingency_table_combined, association
+from src.stats import contingency_table_combined, association
 
 
 TYPE_NA = 'null'

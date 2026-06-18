@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 from typing import Union
 from statsmodels.stats.descriptivestats import describe
-from stats import contingency_table_combined, association
+from src.stats import contingency_table_combined, association
 
 
 TYPE_NA = 'null'

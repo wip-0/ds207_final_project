@@ -10,6 +10,45 @@ warnings.filterwarnings("ignore")
 
 
 ##### FUNCTIONS #####
+def encode_readmitted(y):
+    """
+    Encodes the 'readmitted' column in a given DataFrame using a predefined mapping.
+
+    The function maps values in the 'readmitted' column to numeric representations:
+    'NO' is mapped to 0, '>30' is mapped to 1, and '<30' is mapped to 2.
+
+    :param y: A pandas DataFrame containing a 'readmitted' column with categorical values
+        to be encoded. The column must contain only the keys supported by the mapping
+        dictionary.
+    :return: A new pandas DataFrame with the 'readmitted' column encoded as integers
+        based on the predefined mapping.
+    """
+    mapping = {'NO': 0, '>30': 1, '<30': 2}
+    y_encoded = y.copy()
+    y_encoded['readmitted'] = y_encoded['readmitted'].map(mapping)
+    return y_encoded
+
+
+def binarize_readmitted(y):
+    """
+    Binarizes and Encodes the 'readmitted' column in a given DataFrame using a predefined mapping.
+
+    The function maps values in the 'readmitted' column to numeric representations:
+    'NO' is mapped to 0, '>30' is mapped to 1, and '<30' is mapped to 1.
+
+    :param y: A pandas DataFrame containing a 'readmitted' column with categorical values
+        to be encoded. The column must contain only the keys supported by the mapping
+        dictionary.
+    :return: A new pandas DataFrame with the 'readmitted' column encoded as integers
+        based on the predefined mapping.
+    """
+    mapping = {'NO': 0, '>30': 1, '<30': 1}
+    y_encoded = y.copy()
+    y_encoded['readmitted'] = y_encoded['readmitted'].map(mapping)
+    return y_encoded
+
+
+
 def split_data(dfr,
                target_column= "readmitted",
                test_size_step_1= 0.2,

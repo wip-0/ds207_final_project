@@ -17,8 +17,8 @@ from sklearn.preprocessing import LabelEncoder
 ####### FUNCTIONS #######
 
 def plot_triangular_heatmap(heatmap_df,
-                            title="Correlation Heatmap",
-                            color_map='BrBG',
+                            title= "Correlation Heatmap",
+                            color_map= 'BrBG',
                             method='pearson',
                             encode_categoricals=False,
                             ordinal_mappings=None):

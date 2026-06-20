@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     # Split the data
     print('Note: In data splitting. with duplicated patient numbers, the splitting needs to consider the same patient in the same set to prevent hindsight bias.')
-    X_train, X_val, X_test, y_train, y_val, y_test = split_data_by_patient(df_raw, test_size_step_1=0.2, test_size_step_2=0.25)
+    X_train, X_train_mini, X_val, X_test, y_train, y_train_mini, y_val, y_test = split_data_by_patient(df_raw, test_size_step_1=0.2, test_size_step_2=0.25)
 
     # Get the remining ID columns (encounter_id)
     col_ids = [c for c in X_train.columns if c not in col_int + col_cat + col_y]

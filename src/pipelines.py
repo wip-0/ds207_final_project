@@ -275,14 +275,14 @@ class AdmissionTypeIdGrouper(BaseEstimator, TransformerMixin):
         self.columns = columns or ['admission_type_id']
         self.is_fitted_ = False
         self.mapping_dict = {
-            1: 'Emergency_Acute',       # Emergency
-            2: 'Emergency_Acute',       # Urgent
-            3: 'Elective_Planned',      # Elective
-            4: 'Other_LowVolume',       # Newborn
-            5: LABEL_UNKNOWN,           # Not Available
-            6: LABEL_UNKNOWN,           # NULL
-            7: 'Emergency_Acute',       # Trauma Center
-            8: LABEL_UNKNOWN,           # Not Mapped
+            '1': 'Emergency_Acute',       # Emergency
+            '2': 'Emergency_Acute',       # Urgent
+            '3': 'Elective_Planned',      # Elective
+            '4': 'Other_LowVolume',       # Newborn
+            '5': LABEL_UNKNOWN,           # Not Available
+            '6': LABEL_UNKNOWN,           # NULL
+            '7': 'Emergency_Acute',       # Trauma Center
+            '8': LABEL_UNKNOWN,           # Not Mapped
         }
 
     def fit(self, X, y=None):
@@ -307,29 +307,29 @@ class AdmissionSourceIdGrouper(BaseEstimator, TransformerMixin):
         self.is_fitted_ = False
         self.mapping_dict = {
             # Emergency Room
-            7 : 'Emergency_Room',
+            '7' : 'Emergency_Room',
 
             # Referrals
-            1 : 'Referral',
-            2 : 'Referral',
-            3 : 'Referral',
+            '1' : 'Referral',
+            '2' : 'Referral',
+            '3' : 'Referral',
 
             # Transfers from other medical frameworks
-            4 : 'Transfer_From_Facility',
-            5 : 'Transfer_From_Facility',
-            6 : 'Transfer_From_Facility',
-            10: 'Transfer_From_Facility',
-            22: 'Transfer_From_Facility',
-            25: 'Transfer_From_Facility',
+            '4' : 'Transfer_From_Facility',
+            '5' : 'Transfer_From_Facility',
+            '6' : 'Transfer_From_Facility',
+            '10': 'Transfer_From_Facility',
+            '22': 'Transfer_From_Facility',
+            '25': 'Transfer_From_Facility',
 
             # Missing data flags or rare legal/court admissions
-            8 : LABEL_UNKNOWN,
-            9 : LABEL_UNKNOWN,
-            11: LABEL_UNKNOWN,
-            13: LABEL_UNKNOWN,
-            14: LABEL_UNKNOWN,
-            17: LABEL_UNKNOWN,
-            20: LABEL_UNKNOWN,
+            '8' : LABEL_UNKNOWN,
+            '9' : LABEL_UNKNOWN,
+            '11': LABEL_UNKNOWN,
+            '13': LABEL_UNKNOWN,
+            '14': LABEL_UNKNOWN,
+            '17': LABEL_UNKNOWN,
+            '20': LABEL_UNKNOWN,
         }
 
     def fit(self, X, y=None):
@@ -354,38 +354,38 @@ class DischargeDispositionIdGrouper(BaseEstimator, TransformerMixin):
         self.is_fitted_ = False
         self.mapping_dict = {
             # Discharged Home
-            1 : 'Home',
-            6 : 'Home',
-            8 : 'Home',
-            13: 'Home',
-            14: 'Home',
+            '1': 'Home',
+            '6': 'Home',
+            '8': 'Home',
+            '13': 'Home',
+            '14': 'Home',
 
             # Transferred to alternative healthcare facilities
-            2 : 'Transferred_Facility',
-            3 : 'Transferred_Facility',
-            4 : 'Transferred_Facility',
-            5 : 'Transferred_Facility',
-            22: 'Transferred_Facility',
-            23: 'Transferred_Facility',
-            24: 'Transferred_Facility',
-            28: 'Transferred_Facility',
+            '2' : 'Transferred_Facility',
+            '3' : 'Transferred_Facility',
+            '4' : 'Transferred_Facility',
+            '5' : 'Transferred_Facility',
+            '22': 'Transferred_Facility',
+            '23': 'Transferred_Facility',
+            '24': 'Transferred_Facility',
+            '28': 'Transferred_Facility',
 
             # Left Against Medical Advice / Missing / Other
-            7 : LABEL_UNKNOWN,
-            9 : LABEL_UNKNOWN,
-            10: LABEL_UNKNOWN,
-            12: LABEL_UNKNOWN,
-            15: LABEL_UNKNOWN,
-            16: LABEL_UNKNOWN,
-            17: LABEL_UNKNOWN,
-            18: LABEL_UNKNOWN,
-            25: LABEL_UNKNOWN,
-            27: LABEL_UNKNOWN,
+            '7' : LABEL_UNKNOWN,
+            '9' : LABEL_UNKNOWN,
+            '10': LABEL_UNKNOWN,
+            '12': LABEL_UNKNOWN,
+            '15': LABEL_UNKNOWN,
+            '16': LABEL_UNKNOWN,
+            '17': LABEL_UNKNOWN,
+            '18': LABEL_UNKNOWN,
+            '25': LABEL_UNKNOWN,
+            '27': LABEL_UNKNOWN,
 
             # Patient expired or is in hospice (cannot be readmitted)
-            11: 'Expired_Hospice',
-            19: 'Expired_Hospice',
-            20: 'Expired_Hospice',
+            '11': 'Expired_Hospice',
+            '19': 'Expired_Hospice',
+            '20': 'Expired_Hospice',
         }
 
     def fit(self, X, y=None):

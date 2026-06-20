@@ -214,7 +214,57 @@ if __name__ == "__main__":
     print('Decision:')
     print('- Group `diag_1`, `diag_2`, `diag_3` which are the ICD9 codes by the broader types of diagnosis. Perform one-hot encoding after grouping.')
     print('- To `max_glu_serum` and `A1Cresult`, as they are immune from cardinality, perform one-hot encoding.')
+    print('\n')
 
+    print('Plot ICD9 code counts (top 50 codes):')
+
+    fig, axes = plt.subplots(1, 3, figsize=(20, 6))
+
+    for ax, col in zip(axes, ['diag_1', 'diag_2', 'diag_3']):
+        order = X_train[col].value_counts().index[:50]
+        sns.countplot(
+            data=X_train,
+            x=col,
+            ax=ax,
+            order=order,
+            color="steelblue",
+        )
+        ax.set(
+            title=f"Histogram of {col}",
+            xlabel=col,
+            ylabel="Count",
+        )
+        ax.tick_params(axis="x", rotation=90)
+
+    plt.tight_layout()
+    plt.show()
+    print('\n')
+
+    print('Plot grouped ICD9 code category counts:')
+
+    X_train_adj = ICD9Grouper().fit_transform(X_train)
+
+    fig, axes = plt.subplots(1, 3, figsize=(20, 6))
+
+    for ax, col in zip(axes, ['diag_1', 'diag_2', 'diag_3']):
+        order = X_train_adj[col].value_counts().index
+        sns.countplot(
+            data=X_train_adj,
+            x=col,
+            ax=ax,
+            order=order,
+            color="steelblue",
+        )
+        ax.set(
+            title=f"Histogram of {col}",
+            xlabel=col,
+            ylabel="Count",
+        )
+        ax.tick_params(axis="x", rotation=90)
+
+    plt.tight_layout()
+    plt.show()
+    print('\n')
 
     # ------------------------------------------------------------------------------------
 
@@ -609,10 +659,12 @@ if __name__ == "__main__":
     print('\n')
 
     print('Decision:')
-    print(f'- Only keep the {", ".join([f'`{x}`' for x in df_chi.loc[df_chi['p_value'] < 0.05, "item"].tolist()])} and drop other prescription features.')
-    print('- Perform one-hot encoding after grouping.')
+    print(f'- Drop the drugs with only "No" label (not prescribed).')
+    print('- Although many drugs are rarely prescribed or have insignificant individual association with the target variable `readmitted`, '
+          'we cannot rule out any cross association or non-linear effects due to a combination of prescriptions. '
+          'Hence, we need to keep all other prescriptions and use advanced approach (i.e. ensemble based method) to perform feature selections.')
+    print('- Perform one-hot encoding for the remaining prescription features.')
     print('\n')
-
 
     # ------------------------------------------------------------------------------------
 
@@ -621,15 +673,13 @@ if __name__ == "__main__":
     print('Numerical data analysis')
     print('\n')
 
-
+    print('Plot pair plots for numerical features')
     plot_df = X_train[col_int].copy()
     plot_df["readmitted"] = y_train.to_numpy()
-
     plot_sample = plot_df.dropna().sample(
         n=min(5000, len(plot_df)),
         random_state=42
     )
-
     g = sns.pairplot(
         plot_sample,
         vars=col_int,
@@ -638,9 +688,19 @@ if __name__ == "__main__":
         corner=True,
         plot_kws={"alpha": 0.3, "s": 12}
     )
-
     g.fig.suptitle(
         "Numerical Features by Readmission Class",
         y=1.02
     )
     plt.show()
+    print('\n')
+
+    print('Observation:')
+    print(f'- All numerical features are discrete and most of them suffer from high skewness (except for `num_lab_procedures` and `number_diagnosis`) with weak or no normality.')
+    print('- None of them demonstrate high correlation among each other.')
+    print(f'- No significant issues of outliers despite of high sparsity.')
+    print('\n')
+
+    print('Decision:')
+    print('- Perform standardization on numerical features.')
+    print('\n')

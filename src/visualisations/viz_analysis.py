@@ -228,49 +228,49 @@ def plot_categorical_stacked(df,
     # Remove the target variable from the list of features to plot.
     if target in categorical_columns:
         categorical_columns.remove(target)
-        # Plot percentages instead of raw counts.
-        if percentage == True:
-            for column in categorical_columns:
+    # Plot percentages instead of raw counts.
+    if percentage == True:
+        for column in categorical_columns:
 
-                # Count observations for each combination of target and feature value.
-                counts = df.groupby([target, column]).size().unstack(target)
-                # Convert counts into percentages within each feature category.
-                counts = counts.apply(lambda x: (x / x.sum()) * 100, axis=1)
+            # Count observations for each combination of target and feature value.
+            counts = df.groupby([target, column]).size().unstack(target)
+            # Convert counts into percentages within each feature category.
+            counts = counts.apply(lambda x: (x / x.sum()) * 100, axis=1)
 
-                # Plot stacked bar chart.
-                counts.plot(
-                    kind='bar',
-                    stacked=True,
-                    figsize=(10, 6),
-                    colormap=my_cmap
-                )
-                # Add title and labels.
-                plt.title(f'Stacked bar plot of proportions - {column} per {target} class')
-                plt.ylabel('Proportion (%)')
-                plt.xticks(rotation=45)
-                # Adjust layout and display plot.
-                plt.tight_layout()
-                plt.show()
+            # Plot stacked bar chart.
+            counts.plot(
+                kind='bar',
+                stacked=True,
+                figsize=(10, 6),
+                colormap=my_cmap
+            )
+            # Add title and labels.
+            plt.title(f'Stacked bar plot of proportions - {column} per {target} class')
+            plt.ylabel('Proportion (%)')
+            plt.xticks(rotation=45)
+            # Adjust layout and display plot.
+            plt.tight_layout()
+            plt.show()
 
-        else:
-            for column in categorical_columns:
+    else:
+        for column in categorical_columns:
 
-                # Count observations for each combination of target and feature value.
-                counts = df.groupby([target, column]).size().unstack(target)
-                # Plot stacked bar chart using raw counts.
-                counts.plot(
-                    kind='bar',
-                    stacked=True,
-                    figsize=(10, 6),
-                    colormap=my_cmap
-                )
-                # Add title and labels.
-                plt.title(f'Stacked bar plot - {column} per {target} class')
-                plt.ylabel('Count')
-                plt.xticks(rotation=45)
-                # Adjust layout and display plot.
-                plt.tight_layout()
-                plt.show()
+            # Count observations for each combination of target and feature value.
+            counts = df.groupby([target, column]).size().unstack(target)
+            # Plot stacked bar chart using raw counts.
+            counts.plot(
+                kind='bar',
+                stacked=True,
+                figsize=(10, 6),
+                colormap=my_cmap
+            )
+            # Add title and labels.
+            plt.title(f'Stacked bar plot - {column} per {target} class')
+            plt.ylabel('Count')
+            plt.xticks(rotation=45)
+            # Adjust layout and display plot.
+            plt.tight_layout()
+            plt.show()
 
 
 def create_plots_box_violin(data, features = None ,
@@ -300,6 +300,60 @@ def create_plots_box_violin(data, features = None ,
             plt.tight_layout()  # For better spacing between subplots
             plt.show()  # Show the plots
 
+
+def plot_histograms(dfr,
+                    numeric_features = None
+                    ):
+    """
+    Plots histograms for numeric features within a DataFrame. This function visualizes the distribution
+    of numeric columns through histograms and highlights their mean and median values. The number
+    of subplots is automatically calculated to fit three histograms per row.
+
+    :param dfr: The pandas DataFrame containing data for plotting.
+    :type dfr: pandas.DataFrame
+
+    :param numeric_features: List of column names representing the numeric features to plot histograms for.
+        If None, all numeric columns in the DataFrame are automatically detected and used.
+    :type numeric_features: list, optional
+
+    :return: None
+    """
+    if numeric_features is None:
+        #automatically select all numeric features
+        # as indicated by the dtypes
+        numeric_features = dfr.select_dtypes(
+            include = ['int64', 'float64']).columns.to_list()
+
+    # numeric_feats = numeric_feats_analysis.columns.to_list()
+    n_feats = len(numeric_features)
+
+    # calculating the number of rows needed for 3 columns
+    n_rows = int(np.ceil(n_feats / 3))
+
+    # create subplots using a grid layout
+    fig, axes = plt.subplots(n_rows, 3, figsize=(15, n_rows * 4))
+
+    # flatten the axes array for easy iteration
+    axes = axes.flatten()
+    # iterate over the chosen features and plot the histograms
+    for i, column in enumerate(numeric_features):
+        # calculate the mean and median of the feature
+        mean_ = dfr[column].mean()
+        median_ = dfr[column].median()
+        axes[i].axvline(mean_, color='purple', linestyle='dashed',
+                        linewidth=2, label=f'Mean: {mean_:.2f}')
+        axes[i].axvline(median_, color='green', linestyle='dashed',
+                        linewidth=2, label=f'Median: {median_:.2f}')
+
+        sns.histplot(dfr[column], ax=axes[i])
+        axes[i].set_title(f'{i}: Histogram of {column}')
+        axes[i].legend()
+    # Hide any unused subplots
+    for j in range(n_feats, len(axes)):
+        fig.delaxes(axes[j])
+
+    plt.tight_layout()
+    plt.show()
 
 
 ########
@@ -360,4 +414,3 @@ def find_correlated_features(df, threshold = 0.5, target = 'readmitted',  corre_
 
     # Converting the dictionary to a pandas Series for better visual output
     return pd.Series(correlated_features).sort_values(ascending=False)
-

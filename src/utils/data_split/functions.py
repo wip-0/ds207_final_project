@@ -58,8 +58,8 @@ def split_data(dfr,
     Split a DataFrame into stratified training, validation, and test sets.
 
     The function performs the split in two stages:
-    1. Split the full dataset into a training pool and a test set.
-    2. Split the training pool into the final training and validation sets.
+    1. Split the full dataset into X_train/y_train and a test set.
+    2. Split X_train/y_train into the final training and validation sets.
 
     Stratification is applied in both stages so each output target vector keeps
     approximately the same class distribution as the original target column.
@@ -82,14 +82,19 @@ def split_data(dfr,
     Returns
     -------
     tuple
-        X_train_mini, X_val, X_test, y_train_mini, y_val, y_test
+        X_train, X_train_mini, X_val, X_test,
+        y_train, y_train_mini, y_val, y_test
+
+        X_train and y_train are the first-stage training pool before the
+        validation split. X_train_mini and y_train_mini are the final training
+        set after the validation split.
     """
 
     # Separate the feature columns (X) from the target column (y).
     X = dfr.drop(target_column, axis=1)
     y = dfr[target_column]
 
-    # Step 1: create the holdout test set from the full dataset.
+    # Step 1: create X_train/y_train and the holdout test set from the full dataset.
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
@@ -98,7 +103,7 @@ def split_data(dfr,
         stratify=y,
         random_state=random_state)
 
-    # Step 2: split the remaining training pool into final train and validation sets.
+    # Step 2: split X_train/y_train into final train and validation sets.
     X_train_mini, X_val, y_train_mini, y_val = train_test_split(
         X_train,
         y_train,
@@ -110,15 +115,17 @@ def split_data(dfr,
     print("Data split report")
     print("-" * 5)
     print(f"Original data shape: {dfr.shape}")
+    print(f"X_train shape:      {X_train.shape} | y_train shape:      {y_train.shape}")
     print(f"X_train_mini shape: {X_train_mini.shape} | y_train_mini shape: {y_train_mini.shape}")
     print(f"X_val shape:        {X_val.shape} | y_val shape:        {y_val.shape}")
     print(f"X_test shape:       {X_test.shape} | y_test shape:       {y_test.shape}")
     print("-" * 5)
+    print(f"Train pool rows: {len(y_train)} ({len(y_train) / len(y):.2%} of full data)")
     print(f"Train rows:      {len(y_train_mini)} ({len(y_train_mini) / len(y):.2%} of full data)")
     print(f"Validation rows: {len(y_val)} ({len(y_val) / len(y):.2%} of full data)")
     print(f"Test rows:       {len(y_test)} ({len(y_test) / len(y):.2%} of full data)")
 
-    return X_train_mini, X_val, X_test, y_train_mini, y_val, y_test
+    return X_train, X_train_mini, X_val, X_test, y_train, y_train_mini, y_val, y_test
 
 
 
@@ -137,8 +144,8 @@ def split_data_by_patient(dfr,
     feature.
 
     The split is performed in two stages:
-    1. Split the full dataset into a training pool and a test set.
-    2. Split the training pool into the final training and validation sets.
+    1. Split the full dataset into X_train/y_train and a test set.
+    2. Split X_train/y_train into the final training and validation sets.
 
     Grouping is applied in both stages so no patient appears in more than one
     output set.
@@ -164,7 +171,12 @@ def split_data_by_patient(dfr,
     Returns
     -------
     tuple
-        X_train_mini, X_val, X_test, y_train_mini, y_val, y_test
+        X_train, X_train_mini, X_val, X_test,
+        y_train, y_train_mini, y_val, y_test
+
+        X_train and y_train are the first-stage training pool before the
+        validation split. X_train_mini and y_train_mini are the final training
+        set after the validation split.
     """
     required_columns = {target_column, patient_column}
     missing_columns = required_columns.difference(dfr.columns)
@@ -178,7 +190,7 @@ def split_data_by_patient(dfr,
     groups = dfr[patient_column]
 
     # Step 1:
-    # create the holdout test set, keeping patients grouped together.
+    # create X_train/y_train and the holdout test set, keeping patients grouped together.
     splitter_step_1 = GroupShuffleSplit(
         n_splits=1,
         test_size=test_size_step_1,
@@ -188,27 +200,28 @@ def split_data_by_patient(dfr,
         splitter_step_1.split(X, y, groups)
     )
 
-    X_train_pool, X_test = X.iloc[train_idx], X.iloc[test_idx]
-    y_train_pool, y_test = y.iloc[train_idx], y.iloc[test_idx]
-    groups_train_pool = groups.iloc[train_idx]
+    X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+    y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+    groups_train = groups.iloc[train_idx]
     groups_test = groups.iloc[test_idx]
 
     # Step 2:
-    # split the training pool into final train and validation sets.
+    # split X_train/y_train into final train and validation sets.
     splitter_step_2 = GroupShuffleSplit(
         n_splits=1,
         test_size=test_size_step_2,
         random_state=random_state)
 
     train_mini_idx, val_idx = next(
-        splitter_step_2.split(X_train_pool, y_train_pool, groups_train_pool)
+        splitter_step_2.split(X_train, y_train, groups_train)
     )
 
-    X_train_mini, X_val = X_train_pool.iloc[train_mini_idx], X_train_pool.iloc[val_idx]
-    y_train_mini, y_val = y_train_pool.iloc[train_mini_idx], y_train_pool.iloc[val_idx]
-    groups_train_mini = groups_train_pool.iloc[train_mini_idx]
-    groups_val = groups_train_pool.iloc[val_idx]
+    X_train_mini, X_val = X_train.iloc[train_mini_idx], X_train.iloc[val_idx]
+    y_train_mini, y_val = y_train.iloc[train_mini_idx], y_train.iloc[val_idx]
+    groups_train_mini = groups_train.iloc[train_mini_idx]
+    groups_val = groups_train.iloc[val_idx]
 
+    train_pool_patients = set(groups_train)
     train_patients = set(groups_train_mini)
     val_patients = set(groups_val)
     test_patients = set(groups_test)
@@ -216,14 +229,17 @@ def split_data_by_patient(dfr,
     print("Patient-grouped data split report")
     print("-" * 5)
     print(f"Original data shape: {dfr.shape}")
+    print(f"X_train shape:      {X_train.shape} | y_train shape:      {y_train.shape}")
     print(f"X_train_mini shape: {X_train_mini.shape} | y_train_mini shape: {y_train_mini.shape}")
     print(f"X_val shape:        {X_val.shape} | y_val shape:        {y_val.shape}")
     print(f"X_test shape:       {X_test.shape} | y_test shape:       {y_test.shape}")
     print("-" * 5)
+    print(f"Train pool rows: {len(y_train)} ({len(y_train) / len(y):.2%} of full data)")
     print(f"Train rows:      {len(y_train_mini)} ({len(y_train_mini) / len(y):.2%} of full data)")
     print(f"Validation rows: {len(y_val)} ({len(y_val) / len(y):.2%} of full data)")
     print(f"Test rows:       {len(y_test)} ({len(y_test) / len(y):.2%} of full data)")
     print("-" * 5)
+    print(f"Train pool patients: {len(train_pool_patients)}")
     print(f"Train patients:      {len(train_patients)}")
     print(f"Validation patients: {len(val_patients)}")
     print(f"Test patients:       {len(test_patients)}")
@@ -232,7 +248,7 @@ def split_data_by_patient(dfr,
     print(f"Train/test patient overlap:       {len(train_patients.intersection(test_patients))}")
     print(f"Validation/test patient overlap:  {len(val_patients.intersection(test_patients))}")
 
-    return X_train_mini, X_val, X_test, y_train_mini, y_val, y_test
+    return X_train, X_train_mini, X_val, X_test, y_train, y_train_mini, y_val, y_test
 
 
 
@@ -285,9 +301,11 @@ def create_y_class_report(y_train_mini, y_val, y_test):
 
 
 
-def export_split_data_to_csv(X_train_mini,
+def export_split_data_to_csv(X_train_for_cv,
+                             X_train_mini,
                              X_val,
                              X_test,
+                             y_train_for_cv,
                              y_train_mini,
                              y_val,
                              y_test,
@@ -297,16 +315,18 @@ def export_split_data_to_csv(X_train_mini,
     Export the split feature and target datasets to CSV files.
 
     The function creates one CSV file per dataset inside `output_folder`:
-    X_train_mini.csv, X_val.csv, X_test.csv,
-    y_train_mini.csv, y_val.csv, and y_test.csv.
+    X_train_for_cv.csv, X_train_mini.csv, X_val.csv, X_test.csv,
+    y_train_for_cv.csv, y_train_mini.csv, y_val.csv, and y_test.csv.
 
     Parameters
     ----------
-    X_train_mini, X_val, X_test : pandas.DataFrame
-        Feature datasets created by `split_data`.
-    y_train_mini, y_val, y_test : pandas.Series or array-like
-        Target datasets created by `split_data`.
-    output_folder : str or pathlib.Path, default=SPLITTED_PATH
+    X_train_for_cv, X_train_mini, X_val, X_test : pandas.DataFrame
+        Feature datasets created by `split_data` or `split_data_by_patient`.
+        X_train_for_cv is the first-stage training pool before validation split.
+    y_train_for_cv, y_train_mini, y_val, y_test : pandas.Series or array-like
+        Target datasets created by `split_data` or `split_data_by_patient`.
+        y_train_for_cv is the first-stage training pool before validation split.
+    output_folder : str or pathlib.Path, default="PATH"
         Folder where the CSV files will be saved.
     target_column : str, default="readmitted"
         Column name used when saving the target datasets.
@@ -320,11 +340,13 @@ def export_split_data_to_csv(X_train_mini,
     output_folder.mkdir(parents=True, exist_ok=True)
 
     feature_datasets = {
+        "X_train_for_cv": X_train_for_cv,
         "X_train_mini": X_train_mini,
         "X_val": X_val,
         "X_test": X_test,
     }
     target_datasets = {
+        "y_train_for_cv": y_train_for_cv,
         "y_train_mini": y_train_mini,
         "y_val": y_val,
         "y_test": y_test,

@@ -176,7 +176,7 @@ class MedicalSpecialtyGrouper(BaseEstimator, TransformerMixin):
             'Surgery-Cardiovascular'              : 'Cardiology_Vascular',
             'Surgery-Thoracic'                    : 'Cardiology_Vascular',
 
-            # Endocrine                           , Renal & Internal Specialties
+            # Endocrine, Renal & Internal Specialties
             'Nephrology'                          : 'Endocrine_Renal_Internal',
             'Pulmonology'                         : 'Endocrine_Renal_Internal',
             'Gastroenterology'                    : 'Endocrine_Renal_Internal',
@@ -250,7 +250,7 @@ class MedicalSpecialtyGrouper(BaseEstimator, TransformerMixin):
             'OutreachServices'                    : 'Other',
             'DCPTEAM'                             : 'Other',
             'Dentistry'                           : 'Other',
-            'Dermatology'                         : 'Other'
+            'Dermatology'                         : 'Other',
         }
 
     def fit(self, X, y=None):
@@ -304,7 +304,6 @@ class AdmissionSourceIdGrouper(BaseEstimator, TransformerMixin):
         self.is_fitted_ = False
         self.mapping_dict = {
             # Emergency Room
-
             7 : 'Emergency_Room',
 
             # Referrals
@@ -327,7 +326,7 @@ class AdmissionSourceIdGrouper(BaseEstimator, TransformerMixin):
             13: LABEL_UNKNOWN,
             14: LABEL_UNKNOWN,
             17: LABEL_UNKNOWN,
-            20: LABEL_UNKNOWN
+            20: LABEL_UNKNOWN,
         }
 
     def fit(self, X, y=None):

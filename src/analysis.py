@@ -339,7 +339,7 @@ class Bivariate(object):
     def contingency_table(self, is_pct=False):
         cat_col = self.ftypes.loc[self.ftypes['ftype'].isin([TYPE_CATEGORICAL, TYPE_BINARY])].index
         if not cat_col.empty:
-            df_cat = df[cat_col]
+            df_cat = self.df[cat_col]
             cont_tbl = contingency_table_combined(df_cat, is_pct)
             return cont_tbl
         else:

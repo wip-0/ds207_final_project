@@ -120,6 +120,7 @@ class ColumnDropper(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
+        X = X.copy()
         if self.columns is None:
             return X.iloc[:, 0:0] if isinstance(X, pd.DataFrame) else X[:, 0:0]
 
@@ -258,6 +259,7 @@ class MedicalSpecialtyGrouper(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
+        X = X.copy()
         for col in self.columns:
             X[col] = X[col].map(self.mapping_dict).fillna(LABEL_UNKNOWN)
         return X
@@ -288,6 +290,7 @@ class AdmissionTypeIdGrouper(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
+        X = X.copy()
         for col in self.columns:
             X[col] = X[col].map(self.mapping_dict).fillna(LABEL_UNKNOWN)
         return X
@@ -334,6 +337,7 @@ class AdmissionSourceIdGrouper(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
+        X = X.copy()
         for col in self.columns:
             X[col] = X[col].map(self.mapping_dict).fillna(LABEL_UNKNOWN)
         return X
@@ -389,6 +393,7 @@ class DischargeDispositionIdGrouper(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
+        X = X.copy()
         for col in self.columns:
             X[col] = X[col].map(self.mapping_dict).fillna(LABEL_UNKNOWN)
         return X
@@ -443,6 +448,7 @@ class ICD9Grouper(BaseEstimator, TransformerMixin):
             return "Other"
 
     def transform(self, X):
+        X = X.copy()
         for col in self.columns:
             # Map elements element-wise across the specific series
             X[col] = X[col].astype(str).apply(self._convert_code)
@@ -479,7 +485,7 @@ class HighNoOneHotEncoder(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
-
+        X = X.copy()
         if len(self.col_keep) == 0:
             return pd.DataFrame(index=X.index)
 

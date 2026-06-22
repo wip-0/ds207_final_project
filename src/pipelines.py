@@ -473,7 +473,7 @@ class HighNoOneHotEncoder(BaseEstimator, TransformerMixin):
 
         self.feature_names_in_ = np.array(X.columns)
 
-        self.col_keep = X.columns[(((X == 'No').sum() / len(df)) < 0.99) == True]
+        self.col_keep = X.columns[(((X == 'No').sum() / len(df)) < self.th) == True]
 
         if len(self.col_keep) > 0:
             self.encoder_ = OneHotEncoder(

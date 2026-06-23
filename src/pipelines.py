@@ -1,4 +1,4 @@
-"""
+'''
     Reference: Data Pre-Processing Guide (Original Draft)
 
     ================================================================================================================
@@ -72,12 +72,13 @@
 
     ================================================================================================================
 
-"""
+'''
 
 
 import numpy as np
 import pandas as pd
-from copy import copy
+from copy import deepcopy
+from pathlib import Path
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import SimpleImputer, IterativeImputer
 from sklearn.preprocessing import (
@@ -100,9 +101,12 @@ from sklearn.preprocessing import (
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
+from src.utils.data_split.functions import binarize_readmitted
 
 
 LABEL_UNKNOWN = 'Unknown'
+PATH_DATA_SHUFFLE = Path('../data/interim/split_groupshuffle')
+PATH_DATA_STRATIFY = Path('../data/interim/split_stratified')
 
 
 class ColumnDropper(BaseEstimator, TransformerMixin):
@@ -125,7 +129,7 @@ class ColumnDropper(BaseEstimator, TransformerMixin):
             return X.iloc[:, 0:0] if isinstance(X, pd.DataFrame) else X[:, 0:0]
 
         if isinstance(X, pd.DataFrame):
-            return X.drop(columns=self.columns, errors="ignore")
+            return X.drop(columns=self.columns, errors='ignore')
 
         idx_drop = set(self.columns)
         idx_keep = [idx for idx in range(X.shape[1]) if idx not in idx_drop]
@@ -133,7 +137,7 @@ class ColumnDropper(BaseEstimator, TransformerMixin):
 
     def get_feature_names_out(self, input_features=None):
         if input_features is None:
-            input_features = getattr(self, "feature_names_in_", None)
+            input_features = getattr(self, 'feature_names_in_', None)
 
         if input_features is None:
             return np.array([])
@@ -419,38 +423,37 @@ class ICD9Grouper(BaseEstimator, TransformerMixin):
         if code in ['?', '', 'nan', 'None']:
             return LABEL_UNKNOWN
 
-        if code.startswith("V"):
-            return "Supplementary"
-        if code.startswith("E"):
-            return "External_Cause"
+        if code.startswith('V'):
+            return 'Supplementary'
+        if code.startswith('E'):
+            return 'External_Cause'
         try:
             num = float(code)
         except ValueError:
             return LABEL_UNKNOWN
 
         if 390 <= num <= 459 or num == 785:
-            return "Circulatory"
+            return 'Circulatory'
         elif 460 <= num <= 519 or num == 786:
-            return "Respiratory"
+            return 'Respiratory'
         elif 520 <= num <= 579 or num == 787:
-            return "Digestive"
+            return 'Digestive'
         elif 250 <= num < 251:
-            return "Diabetes"
+            return 'Diabetes'
         elif 800 <= num <= 999:
-            return "Injury"
+            return 'Injury'
         elif 710 <= num <= 739:
-            return "Musculoskeletal"
+            return 'Musculoskeletal'
         elif 580 <= num <= 629 or num == 788:
-            return "Genitourinary"
+            return 'Genitourinary'
         elif 140 <= num <= 239:
-            return "Neoplasms"
+            return 'Neoplasms'
         else:
-            return "Other"
+            return 'Other'
 
     def transform(self, X):
         X = X.copy()
         for col in self.columns:
-            # Map elements element-wise across the specific series
             X[col] = X[col].astype(str).apply(self._convert_code)
         return X
 
@@ -458,46 +461,111 @@ class ICD9Grouper(BaseEstimator, TransformerMixin):
         return np.array(input_features) if input_features is not None else np.array(self.columns)
 
 
-class HighNoOneHotEncoder(BaseEstimator, TransformerMixin):
+class HighNoDropper(BaseEstimator, TransformerMixin):
 
-    def __init__(self, th=0.99, val_no='No', handle_unknown='ignore', sparse_output=False):
+    def __init__(self, th=0.99, val_no='No'):
         self.th = th
         self.val_no = val_no
-        self.handle_unknown = handle_unknown
-        self.sparse_output = sparse_output
-
         self.col_keep = []
         self.is_fitted_ = False
 
     def fit(self, X, y=None):
-
         self.feature_names_in_ = np.array(X.columns)
-
-        self.col_keep = X.columns[(((X == 'No').sum() / len(df)) < self.th) == True]
-
-        if len(self.col_keep) > 0:
-            self.encoder_ = OneHotEncoder(
-                handle_unknown=self.handle_unknown,
-                sparse_output=self.sparse_output,
-            )
-            self.encoder_.fit(X[self.col_keep])
-
+        self.col_keep = X.columns[(((X == 'No').sum() / len(X)) < self.th) == True]
+        self.is_fitted_ = True
         return self
 
     def transform(self, X):
-        X = X.copy()
         if len(self.col_keep) == 0:
             return pd.DataFrame(index=X.index)
+        return X[self.col_keep]
 
-        encoded = self.encoder_.transform(X[self.col_keep])
-        return pd.DataFrame(
-            encoded,
-            index=X.index,
-            columns=self.get_feature_names_out(),
-        )
+    def get_feature_names_out(self, input_features=None):
+        return np.array(self.col_keep)
 
-    def get_feature_names_out(self, *args, **kwargs):
-        return self.encoder_.get_feature_names_out(self.col_keep) if (len(self.col_keep) > 0) else np.array([])
+
+class PrescriptionGrouper(BaseEstimator, TransformerMixin):
+
+    def __init__(self, columns=None):
+        self.columns = columns or [
+            'metformin'              , 'repaglinide'           , 'nateglinide',
+            'chlorpropamide'         , 'glimepiride'           , 'acetohexamide',
+            'glipizide'              , 'glyburide'             , 'tolbutamide',
+            'pioglitazone'           , 'rosiglitazone'         , 'acarbose',
+            'miglitol'               , 'troglitazone'          , 'tolazamide',
+            'examide'                , 'citoglipton'           , 'insulin',
+
+            'glyburide-metformin'    , 'glipizide-metformin'   , 'glimepiride-pioglitazone',
+            'metformin-rosiglitazone', 'metformin-pioglitazone',
+        ]
+        self.col_combo = {
+            'glyburide-metformin'     : ['glyburide'  , 'metformin'],
+            'glipizide-metformin'     : ['glipizide'  , 'metformin'],
+            'metformin-rosiglitazone' : ['metformin'  , 'rosiglitazone'],
+            'metformin-pioglitazone'  : ['metformin'  , 'pioglitazone'],
+            'glimepiride-pioglitazone': ['glimepiride', 'pioglitazone'],
+        }
+        self.groups = {
+            'sulfonylureas'    : ['glimepiride' , 'glipizide'    , 'glyburide'    , 'chlorpropamide', 'acetohexamide', 'tolbutamide', 'tolazamide'],
+            'tzds'             : ['pioglitazone', 'rosiglitazone', 'troglitazone'],
+            'meglitinides'     : ['repaglinide' , 'nateglinide'],
+            'alpha_glucosidase': ['acarbose'    , 'miglitol'],
+        }
+        self.mapping_change = {'No': 0, 'Up': 1, 'Down': -1, 'Steady': 0}
+        self.mapping_prescr = {'No': 0, 'Up': 1, 'Down': 1, 'Steady': 1}
+        self.col_keep = []
+        self.is_fitted_ = False
+
+    def process(self, X):
+        X = X.copy()
+        columns = [c for c in self.columns if c in X.columns]
+        X[columns] = X[columns].fillna(0)
+
+        df_prescr = pd.DataFrame(index=X.index)
+        df_change = pd.DataFrame(index=X.index)
+        df_final  = pd.DataFrame(index=X.index)
+
+        # Map labels to numbers
+        for col in self.columns:
+            if col in X.columns:
+                df_prescr[col] = X[col].astype(str).map(self.mapping_prescr)
+                df_change[col] = X[col].astype(str).map(self.mapping_change)
+
+        # Extract labels from combo drugs and assign values to target drugs
+        for combo, targets in self.col_combo.items():
+            if combo in X.columns:
+                for drug in targets:
+                    df_prescr[drug] = df_prescr[drug] + df_prescr[combo]
+                    df_change[drug] = df_change[drug] + df_change[combo]
+                df_prescr.drop(columns=combo, inplace=True)
+                df_change.drop(columns=combo, inplace=True)
+
+        # Process grouped drugs to calculate net prescribed drugs and net change in dosage
+        for group, drugs in self.groups.items():
+            drugs = [d for d in drugs if d in df_prescr.columns]
+            if drugs:
+                df_final[f'{group}__prescribed'] = df_prescr[drugs].sum(axis=1)
+                df_final[f'{group}__change'] = df_change[drugs].sum(axis=1)
+
+        # Process unique standalone drugs
+        for drug in ['metformin', 'insulin', 'examide', 'citoglipton']:
+            if drug in df_prescr.columns:
+                df_final[f'{drug}_prescribed'] = df_prescr[drug]
+                df_final[f'{drug}_change'] = df_change[drug]
+
+        return df_final
+
+    def fit(self, X, y=None):
+        df_final = self.process(X)
+        self.col_keep = df_final.columns.tolist()
+        self.is_fitted_ = True
+        return self
+
+    def transform(self, X):
+        return self.process(X)
+
+    def get_feature_names_out(self, input_features=None):
+        return np.array(self.col_keep)
 
 
 class PipelineBuilder(object):
@@ -508,7 +576,8 @@ class PipelineBuilder(object):
         discharge_group      = DischargeDispositionIdGrouper,
         admission_src_group  = AdmissionSourceIdGrouper,
         icd9_group           = ICD9Grouper,
-        high_no_onehot       = HighNoOneHotEncoder,
+        high_no_drop         = HighNoDropper,
+        prescription_group   = PrescriptionGrouper,
         drop                 = ColumnDropper,
     )
     ENCODERS = dict(
@@ -539,7 +608,7 @@ class PipelineBuilder(object):
 
     def __init__(self, pipeline_config, column_config):
 
-        pipeline_config = copy(pipeline_config)
+        pipeline_config = deepcopy(pipeline_config)
 
         for v in pipeline_config.values():
             v.update({'columns': []})
@@ -568,9 +637,62 @@ class PipelineBuilder(object):
         return ColumnTransformer(ls_transformers, **column_transformer_param).set_output(transform='pandas')
 
 
+def load_data():
+    '''
+    Load and preprocess data before pipeline.
+
+    Returns:
+         data_shuffle: Dictionary of X and y data from `interim/split_groupshuffle`.
+         data_stratify: Dictionary of X and y data from `interim/split_stratified `.
+    '''
+    col_int = [
+        'time_in_hospital',
+        'num_lab_procedures',
+        'num_procedures',
+        'num_medications',
+        'number_outpatient',
+        'number_emergency',
+        'number_inpatient',
+        'number_diagnoses',
+     ]
+
+    data_shuffle = dict()
+    data_stratify = dict()
+
+    data_shuffle['X_train_for_cv']  = pd.read_csv(PATH_DATA_SHUFFLE / 'X_train_for_cv.csv')
+    data_shuffle['X_train_mini']    = pd.read_csv(PATH_DATA_SHUFFLE / 'X_train_mini.csv')
+    data_shuffle['X_val']           = pd.read_csv(PATH_DATA_SHUFFLE / 'X_val.csv')
+    data_shuffle['X_test']          = pd.read_csv(PATH_DATA_SHUFFLE / 'X_test.csv')
+    data_shuffle['y_train_for_cv']  = pd.read_csv(PATH_DATA_SHUFFLE / 'y_train_for_cv.csv').astype(int)
+    data_shuffle['y_train_mini']    = pd.read_csv(PATH_DATA_SHUFFLE / 'y_train_mini.csv').astype(int)
+    data_shuffle['y_val']           = pd.read_csv(PATH_DATA_SHUFFLE / 'y_val.csv').astype(int)
+    data_shuffle['y_test']          = pd.read_csv(PATH_DATA_SHUFFLE / 'y_test.csv').astype(int)
+
+    data_stratify['X_train_for_cv'] = pd.read_csv(PATH_DATA_STRATIFY / 'X_train_for_cv.csv')
+    data_stratify['X_train_mini']   = pd.read_csv(PATH_DATA_STRATIFY / 'X_train_mini.csv')
+    data_stratify['X_val']          = pd.read_csv(PATH_DATA_STRATIFY / 'X_val.csv')
+    data_stratify['X_test']         = pd.read_csv(PATH_DATA_STRATIFY / 'X_test.csv')
+    data_stratify['y_train_for_cv'] = pd.read_csv(PATH_DATA_STRATIFY / 'y_train_for_cv.csv').astype(int)
+    data_stratify['y_train_mini']   = pd.read_csv(PATH_DATA_STRATIFY / 'y_train_mini.csv').astype(int)
+    data_stratify['y_val']          = pd.read_csv(PATH_DATA_STRATIFY / 'y_val.csv').astype(int)
+    data_stratify['y_test']         = pd.read_csv(PATH_DATA_STRATIFY / 'y_test.csv').astype(int)
+
+    for k, v in data_shuffle.items():
+        if k.startswith('X_'):
+            data_shuffle[k] = v.astype(str).replace('?', np.nan)
+            data_shuffle[k][col_int] = v[col_int].astype(int)
+
+    for k, v in data_stratify.items():
+        if k.startswith('X_'):
+            data_stratify[k] = v.astype(str).replace('?', np.nan)
+            data_stratify[k][col_int] = v[col_int].astype(int)
+
+    return data_shuffle, data_stratify
+
+
 if __name__ == '__main__':
 
-    # For logistic
+    # Configure column pipeline group
     COLUMN_CONFIG = {
         'encounter_id'            : 'pipeline_drop',
         'patient_nbr'             : 'pipeline_drop',
@@ -611,8 +733,8 @@ if __name__ == '__main__':
         'glimepiride-pioglitazone': 'pipeline_prescript',
         'metformin-rosiglitazone' : 'pipeline_prescript',
         'metformin-pioglitazone'  : 'pipeline_prescript',
-        'change'                  : 'pipeline_prescript',
-        'diabetesMed'             : 'pipeline_prescript',
+        'change'                  : 'pipeline_drop',
+        'diabetesMed'             : 'pipeline_drop',
         'time_in_hospital'        : 'pipeline_standard',
         'num_lab_procedures'      : 'pipeline_standard',
         'num_procedures'          : 'pipeline_standard',
@@ -672,7 +794,8 @@ if __name__ == '__main__':
         },
         'pipeline_prescript': {
             'steps': [
-                {'registry': 'custom', 'key': 'high_no_onehot', 'param': {}},
+                {'registry': 'custom', 'key': 'high_no_drop', 'param': {'th': 1.}},
+                {'registry': 'custom', 'key': 'prescription_group', 'param': {}},
             ]
         },
         'pipeline_standard': {
@@ -682,22 +805,10 @@ if __name__ == '__main__':
         },
     }
 
-    COL_INT64 = [
-        'time_in_hospital',
-        'num_lab_procedures',
-        'num_procedures',
-        'num_medications',
-        'number_outpatient',
-        'number_emergency',
-        'number_inpatient',
-        'number_diagnoses',
-    ]
-
     # Load data
-    df = pd.read_csv(r'../data/source/diabetic_data.csv').astype(str).replace('?', np.nan)
-    df[COL_INT64] = df[COL_INT64].astype(int)
+    data_shuffle, data_stratify = load_data()
+    df = data_shuffle['X_train_for_cv']
 
-    #
     pipeline = PipelineBuilder(PIPELINE_CONFIG, COLUMN_CONFIG).build()
     pipeline.fit(df)
     df_new = pipeline.transform(df)

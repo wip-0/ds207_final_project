@@ -550,8 +550,8 @@ class PrescriptionGrouper(BaseEstimator, TransformerMixin):
         # Process unique standalone drugs
         for drug in ['metformin', 'insulin', 'examide', 'citoglipton']:
             if drug in df_prescr.columns:
-                df_final[f'{drug}_prescribed'] = df_prescr[drug]
-                df_final[f'{drug}_change'] = df_change[drug]
+                df_final[f'{drug}__prescribed'] = df_prescr[drug]
+                df_final[f'{drug}__change'] = df_change[drug]
 
         return df_final
 
@@ -695,7 +695,7 @@ if __name__ == '__main__':
     # Configure column pipeline group
     COLUMN_CONFIG = {
         'encounter_id'            : 'pipeline_drop',
-        'patient_nbr'             : 'pipeline_drop',
+        # 'patient_nbr'             : 'pipeline_drop',          # Already dropped in split data
         'race'                    : 'pipeline_onehot',
         'gender'                  : 'pipeline_onehot',
         'age'                     : 'pipeline_onehot',          # or ordinal_encoding for NN
@@ -807,7 +807,7 @@ if __name__ == '__main__':
 
     # Load data
     data_shuffle, data_stratify = load_data()
-    df = data_shuffle['X_train_for_cv']
+    df = data_shuffle['X_train_mini']
 
     pipeline = PipelineBuilder(PIPELINE_CONFIG, COLUMN_CONFIG).build()
     pipeline.fit(df)

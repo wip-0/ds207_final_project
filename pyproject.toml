@@ -27,6 +27,7 @@ dependencies = [
     "graphviz==0.21",
     "keras>=3.14.0",
     "scikit-anfis",
+    "python-dotenv>=1.2.2",
 ]
 
 [tool.uv]

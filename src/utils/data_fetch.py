@@ -121,8 +121,8 @@ class DataLoader(DataRead):
         self.X_PATH_TEST = os.getenv("X_PATH_TEST")
 
         self.Y_PATH_TRAIN_MINI = os.getenv("Y_PATH_TRAIN_MINI")
-        self.Y_PATH_VAL = os.getenv("Y_PATH_TRAIN_MINI")
-        self.Y_PATH_TEST = os.getenv("Y_PATH_TRAIN_MINI")
+        self.Y_PATH_VAL = os.getenv("Y_PATH_VAL")
+        self.Y_PATH_TEST = os.getenv("Y_PATH_TEST")
 
         # tuple of paths
         self.paths_data_ = (self.X_PATH_TRAIN_MINI,
@@ -140,8 +140,8 @@ class DataLoader(DataRead):
         self.X_PATH_TEST_GS = os.getenv("X_PATH_TEST_GS")
 
         self.Y_PATH_TRAIN_MINI_GS = os.getenv("Y_PATH_TRAIN_MINI_GS")
-        self.Y_PATH_VAL_GS = os.getenv("Y_PATH_TRAIN_MINI_GS")
-        self.Y_PATH_TEST_GS = os.getenv("Y_PATH_TRAIN_MINI_GS")
+        self.Y_PATH_VAL_GS = os.getenv("Y_PATH_VAL_GS")
+        self.Y_PATH_TEST_GS = os.getenv("Y_PATH_TEST_GS")
 
         # tuple of paths
         self.paths_data_gs = (self.X_PATH_TRAIN_MINI_GS,

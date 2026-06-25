@@ -1,4 +1,7 @@
-""" Functions used for data split (creating sets of training, validation, and test data)."""
+"""
+Functions used for data split (creating sets of training, validation, and test data).
+Some additional functions are also included (preprocessing and data split analysis).
+"""
 
 #### IMPORTS #####
 from sklearn.model_selection import GroupShuffleSplit, train_test_split
@@ -10,7 +13,8 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-##### FUNCTIONS #####
+##### PREPROCESSING FUNCTIONS #####
+
 def encode_readmitted(y):
     """
     Encodes the 'readmitted' column in a given DataFrame using a predefined mapping.
@@ -50,11 +54,61 @@ def binarize_readmitted(y):
 
 
 
+def count_patients(df):
+    """
+    Add a counter column showing how many times each patient appears.
+
+    A counter value of 1 means the patient appears once in the dataset. A value
+    greater than 1 identifies rows belonging to patients with multiple
+    encounters.
+    """
+    # checking if the needed columns exist:
+    required_columns = {"encounter_id", "patient_nbr"}
+    missing_columns = required_columns.difference(df.columns)
+    if missing_columns:
+        raise ValueError(f"Missing required columns: {sorted(missing_columns)}")
+    # checking the uniqueness of the encounter_id column:
+    if df["encounter_id"].duplicated().any():
+        raise ValueError("encounter_id values must be unique.")
+
+    df_with_counter = df.copy()
+    df_with_counter["counter"] = df_with_counter.groupby("patient_nbr")["patient_nbr"].transform("count")
+
+    return df_with_counter
+
+
+def randomly_select_from_multi_patients(
+        df,
+        seed= 42):
+    """
+    Keep all single-encounter patients
+    and randomly select one row per multi-encounter patient.
+    """
+
+    df_count = count_patients(df)
+    df_count_only_one = df_count[df_count["counter"] == 1]
+    df_count_more_than_one = df_count[df_count["counter"] > 1]
+    # group by "patient_nbr" and randomly select one row per patient number
+    df_count_more_than_one = (
+        df_count_more_than_one
+        .groupby("patient_nbr", group_keys= False)
+        .sample(n= 1, random_state= seed)
+    )
+    # concatenation of the two dataframes
+    df_result = pd.concat([df_count_only_one, df_count_more_than_one])
+    # sort the dataframe by index
+    df_result = df_result.sort_index()
+
+    return df_result
+
+
+#### SPLIT FUNCTIONS ####
+
 def split_data(dfr,
                target_column= "readmitted",
                test_size_step_1= 0.2,
                test_size_step_2= 0.2,
-               random_state=365):
+               random_state= 365):
     """
     Split a DataFrame into stratified training, validation, and test sets.
 
@@ -252,6 +306,9 @@ def split_data_by_patient(dfr,
     return X_train, X_train_mini, X_val, X_test, y_train, y_train_mini, y_val, y_test
 
 
+
+##### DATA SPLIT ANALYSIS FUNCTIONS #####
+
 def create_y_class_report(y_train_mini, y_val, y_test):
     """
     Create a brief pandas report with class counts and percentages for each Y dataset.
@@ -299,12 +356,13 @@ def create_y_class_report(y_train_mini, y_val, y_test):
     return report
 
 
+#### EXPORT TO CSV FUNCTIONS ####
 
-def export_split_data_to_csv(X_train_for_cv,
+def export_split_data_to_csv(X_train_plus_val,
                              X_train_mini,
                              X_val,
                              X_test,
-                             y_train_for_cv,
+                             y_train_plus_val,
                              y_train_mini,
                              y_val,
                              y_test,
@@ -314,17 +372,17 @@ def export_split_data_to_csv(X_train_for_cv,
     Export the split feature and target datasets to CSV files.
 
     The function creates one CSV file per dataset inside `output_folder`:
-    X_train_for_cv.csv, X_train_mini.csv, X_val.csv, X_test.csv,
-    y_train_for_cv.csv, y_train_mini.csv, y_val.csv, and y_test.csv.
+    X_train_plus_val.csv, X_train_mini.csv, X_val.csv, X_test.csv,
+    y_train_plus_val.csv, y_train_mini.csv, y_val.csv, and y_test.csv.
 
     Parameters
     ----------
-    X_train_for_cv, X_train_mini, X_val, X_test : pandas.DataFrame
+    X_train_plus_val, X_train_mini, X_val, X_test : pandas.DataFrame
         Feature datasets created by `split_data` or `split_data_by_patient`.
-        X_train_for_cv is the first-stage training pool before validation split.
-    y_train_for_cv, y_train_mini, y_val, y_test : pandas.Series or array-like
+        X_train_plus_val is the first-stage training pool before validation split.
+    y_train_plus_val, y_train_mini, y_val, y_test : pandas.Series or array-like
         Target datasets created by `split_data` or `split_data_by_patient`.
-        y_train_for_cv is the first-stage training pool before validation split.
+        y_train_plus_val is the first-stage training pool before validation split.
     output_folder : str or pathlib.Path, default="PATH"
         Folder where the CSV files will be saved.
     target_column : str, default="readmitted"
@@ -339,13 +397,13 @@ def export_split_data_to_csv(X_train_for_cv,
     output_folder.mkdir(parents=True, exist_ok=True)
 
     feature_datasets = {
-        "X_train_for_cv": X_train_for_cv,
+        "X_train_plus_val": X_train_plus_val,
         "X_train_mini": X_train_mini,
         "X_val": X_val,
         "X_test": X_test,
     }
     target_datasets = {
-        "y_train_for_cv": y_train_for_cv,
+        "y_train_plus_val": y_train_plus_val,
         "y_train_mini": y_train_mini,
         "y_val": y_val,
         "y_test": y_test,
@@ -370,6 +428,7 @@ def export_split_data_to_csv(X_train_for_cv,
     return exported_paths
 
 
+#### ADDITIONAL DATA SPLIT FUNCTION ####
 
 def split_data_by_patient_hist(dfr,
                                target_column="readmitted",

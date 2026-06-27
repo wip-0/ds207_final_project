@@ -107,6 +107,7 @@ from src.utils.data_split.functions import binarize_readmitted
 LABEL_UNKNOWN = 'Unknown'
 PATH_DATA_SHUFFLE = Path('../data/interim/split_groupshuffle')
 PATH_DATA_STRATIFY = Path('../data/interim/split_stratified')
+PATH_DATA_KF = Path('../data/interim/split_kf_group_stratified')
 
 
 class ColumnDropper(BaseEstimator, TransformerMixin):
@@ -637,13 +638,9 @@ class PipelineBuilder(object):
         return ColumnTransformer(ls_transformers, **column_transformer_param).set_output(transform='pandas')
 
 
-def load_data():
+def load_data(type='kf'):
     '''
     Load and preprocess data before pipeline.
-
-    Returns:
-         data_shuffle: Dictionary of X and y data from `interim/split_groupshuffle`.
-         data_stratify: Dictionary of X and y data from `interim/split_stratified `.
     '''
     col_int = [
         'time_in_hospital',
@@ -656,38 +653,41 @@ def load_data():
         'number_diagnoses',
      ]
 
-    data_shuffle = dict()
-    data_stratify = dict()
+    data = dict()
 
-    data_shuffle['X_train_for_cv']  = pd.read_csv(PATH_DATA_SHUFFLE / 'X_train_for_cv.csv')
-    data_shuffle['X_train_mini']    = pd.read_csv(PATH_DATA_SHUFFLE / 'X_train_mini.csv')
-    data_shuffle['X_val']           = pd.read_csv(PATH_DATA_SHUFFLE / 'X_val.csv')
-    data_shuffle['X_test']          = pd.read_csv(PATH_DATA_SHUFFLE / 'X_test.csv')
-    data_shuffle['y_train_for_cv']  = pd.read_csv(PATH_DATA_SHUFFLE / 'y_train_for_cv.csv').astype(int)
-    data_shuffle['y_train_mini']    = pd.read_csv(PATH_DATA_SHUFFLE / 'y_train_mini.csv').astype(int)
-    data_shuffle['y_val']           = pd.read_csv(PATH_DATA_SHUFFLE / 'y_val.csv').astype(int)
-    data_shuffle['y_test']          = pd.read_csv(PATH_DATA_SHUFFLE / 'y_test.csv').astype(int)
+    if type == 'kf':
+        path = PATH_DATA_KF
+    elif type == 'shuffle':
+        path = PATH_DATA_SHUFFLE
+    elif type == 'stratify':
+        path = PATH_DATA_STRATIFY
 
-    data_stratify['X_train_for_cv'] = pd.read_csv(PATH_DATA_STRATIFY / 'X_train_for_cv.csv')
-    data_stratify['X_train_mini']   = pd.read_csv(PATH_DATA_STRATIFY / 'X_train_mini.csv')
-    data_stratify['X_val']          = pd.read_csv(PATH_DATA_STRATIFY / 'X_val.csv')
-    data_stratify['X_test']         = pd.read_csv(PATH_DATA_STRATIFY / 'X_test.csv')
-    data_stratify['y_train_for_cv'] = pd.read_csv(PATH_DATA_STRATIFY / 'y_train_for_cv.csv').astype(int)
-    data_stratify['y_train_mini']   = pd.read_csv(PATH_DATA_STRATIFY / 'y_train_mini.csv').astype(int)
-    data_stratify['y_val']          = pd.read_csv(PATH_DATA_STRATIFY / 'y_val.csv').astype(int)
-    data_stratify['y_test']         = pd.read_csv(PATH_DATA_STRATIFY / 'y_test.csv').astype(int)
+    if type == 'kf':
+        data['X_train_plus_val']  = pd.read_csv(path / 'X_train_plus_val.csv')
+        data['X_train_mini']      = pd.read_csv(path / 'X_train_mini.csv')
+        data['X_val']             = pd.read_csv(path / 'X_val.csv')
+        data['X_test']            = pd.read_csv(path / 'X_test.csv')
+        data['y_train_plus_val']  = pd.read_csv(path / 'y_train_plus_val.csv').astype(int)
+        data['y_train_mini']      = pd.read_csv(path / 'y_train_mini.csv').astype(int)
+        data['y_val']             = pd.read_csv(path / 'y_val.csv').astype(int)
+        data['y_test']            = pd.read_csv(path / 'y_test.csv').astype(int)
 
-    for k, v in data_shuffle.items():
+    if type in ['shuffle', 'stratify']:
+        data['X_train_for_cv']  = pd.read_csv(path / 'X_train_for_cv.csv')
+        data['X_train_mini']    = pd.read_csv(path / 'X_train_mini.csv')
+        data['X_val']           = pd.read_csv(path / 'X_val.csv')
+        data['X_test']          = pd.read_csv(path / 'X_test.csv')
+        data['y_train_for_cv']  = pd.read_csv(path / 'y_train_for_cv.csv').astype(int)
+        data['y_train_mini']    = pd.read_csv(path / 'y_train_mini.csv').astype(int)
+        data['y_val']           = pd.read_csv(path / 'y_val.csv').astype(int)
+        data['y_test']          = pd.read_csv(path / 'y_test.csv').astype(int)
+
+    for k, v in data.items():
         if k.startswith('X_'):
-            data_shuffle[k] = v.astype(str).replace('?', np.nan)
-            data_shuffle[k][col_int] = v[col_int].astype(int)
+            data[k] = v.astype(str).replace('?', np.nan)
+            data[k][col_int] = v[col_int].astype(int)
 
-    for k, v in data_stratify.items():
-        if k.startswith('X_'):
-            data_stratify[k] = v.astype(str).replace('?', np.nan)
-            data_stratify[k][col_int] = v[col_int].astype(int)
-
-    return data_shuffle, data_stratify
+    return data
 
 
 if __name__ == '__main__':

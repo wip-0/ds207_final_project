@@ -565,6 +565,7 @@ class PrescriptionGrouper(BaseEstimator, TransformerMixin):
             self.encoder_ = OneHotEncoder(
                 handle_unknown=self.handle_unknown,
                 sparse_output=self.sparse_output,
+                # categories=[['No', 'Steady', 'Up', 'Down'] for _ in self.col_in]
             )
             self.encoder_.fit(X[self.col_in])
 
@@ -826,8 +827,8 @@ if __name__ == '__main__':
     }
 
     # Load data
-    data_shuffle, data_stratify = load_data()
-    df = data_shuffle['X_train_mini']
+    data = load_data("kf")
+    df = data['X_train_mini']
 
     pipeline = PipelineBuilder(PIPELINE_CONFIG, COLUMN_CONFIG).build()
     pipeline.fit(df)

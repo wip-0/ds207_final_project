@@ -47,10 +47,6 @@
     change                  : check association with readmitted + drop if NO > 99%; one-hot encoding
     diabetesMed             : check association with readmitted + drop if NO > 99%; one-hot encoding
 
-    had_emergency      = (number_emergency > 0)
-    high_comorbidity   = (number_diagnoses >= top_quartile)
-    diabetes_dx_count  = diag_1.startswith('250') + diag_2.startswith('250') + diag_3.startswith('250')
-
     ================================================================================================================
 
     DATA PRE-PROCESSING FOR INTEGER VARIABLES
@@ -487,7 +483,7 @@ class HighNoDropper(BaseEstimator, TransformerMixin):
 
 class PrescriptionGrouper(BaseEstimator, TransformerMixin):
 
-    def __init__(self, columns=None):
+    def __init__(self, columns=None, handle_unknown='ignore', sparse_output=False):
         self.columns = columns or [
             'metformin'              , 'repaglinide'           , 'nateglinide',
             'chlorpropamide'         , 'glimepiride'           , 'acetohexamide',
@@ -515,19 +511,21 @@ class PrescriptionGrouper(BaseEstimator, TransformerMixin):
         self.mapping_change = {'No': 0, 'Up': 1, 'Down': -1, 'Steady': 0}
         self.mapping_prescr = {'No': 0, 'Up': 1, 'Down': 1, 'Steady': 1}
         self.col_keep = []
+        self.col_in = []
+        self.handle_unknown = handle_unknown
+        self.sparse_output = sparse_output
         self.is_fitted_ = False
 
     def process(self, X):
         X = X.copy()
-        columns = [c for c in self.columns if c in X.columns]
-        X[columns] = X[columns].fillna(0)
+        X[self.col_in] = X[self.col_in].fillna('No')
 
         df_prescr = pd.DataFrame(index=X.index)
         df_change = pd.DataFrame(index=X.index)
         df_final  = pd.DataFrame(index=X.index)
 
         # Map labels to numbers
-        for col in self.columns:
+        for col in self.col_in:
             if col in X.columns:
                 df_prescr[col] = X[col].astype(str).map(self.mapping_prescr)
                 df_change[col] = X[col].astype(str).map(self.mapping_change)
@@ -536,6 +534,9 @@ class PrescriptionGrouper(BaseEstimator, TransformerMixin):
         for combo, targets in self.col_combo.items():
             if combo in X.columns:
                 for drug in targets:
+                    if drug not in df_prescr.columns:
+                        df_prescr[drug] = 0
+                        df_change[drug] = 0
                     df_prescr[drug] = df_prescr[drug] + df_prescr[combo]
                     df_change[drug] = df_change[drug] + df_change[combo]
                 df_prescr.drop(columns=combo, inplace=True)
@@ -557,16 +558,35 @@ class PrescriptionGrouper(BaseEstimator, TransformerMixin):
         return df_final
 
     def fit(self, X, y=None):
+        self.col_in = [c for c in self.columns if c in X.columns]
         df_final = self.process(X)
         self.col_keep = df_final.columns.tolist()
+        if len(self.col_in) > 0:
+            self.encoder_ = OneHotEncoder(
+                handle_unknown=self.handle_unknown,
+                sparse_output=self.sparse_output,
+            )
+            self.encoder_.fit(X[self.col_in])
+
         self.is_fitted_ = True
         return self
 
     def transform(self, X):
-        return self.process(X)
+        X = X.copy()
+        df_final = self.process(X)
+
+        columns = [c for c in self.col_in if c in X.columns]
+        if len(columns) == 0:
+            return pd.DataFrame(index=X.index)
+        encoded = self.encoder_.transform(X[columns])
+        oh_cols = self.encoder_.get_feature_names_out(self.col_in)
+        df_oh = pd.DataFrame(encoded, index=X.index, columns=oh_cols)
+
+        return pd.concat([df_final, df_oh], axis=1)
 
     def get_feature_names_out(self, input_features=None):
-        return np.array(self.col_keep)
+        oh_cols = (self.encoder_.get_feature_names_out(self.col_in) if hasattr(self, "encoder_") else [])
+        return np.array(list(self.col_keep) + list(oh_cols))
 
 
 class PipelineBuilder(object):

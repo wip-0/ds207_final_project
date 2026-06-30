@@ -71,15 +71,6 @@ class DataRead(FindProjectRoot):
 
 
 
-###### Import this to your notebook:
-# Example below:
-# from src.utils.data_fetch import DataLoader
-# df_Xtrain, df_Xval, df_Xtest, df_ytrain, df_yval, df_ytest = DataLoader().fetch_data_stratified()
-# or
-# df_Xtrain, df_Xval, df_Xtest, df_ytrain, df_yval, df_ytest = DataLoader().fetch_data_group_shuffling()
-
-#TODO: The multiple methods may be optimised if needed to one method with different options
-
 class DataLoader(DataRead):
     """
     Handles data loading operations from various directory structures.

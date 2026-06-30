@@ -8,3 +8,39 @@ Y_PATH_VAL_KF_INT = "https://raw.githubusercontent.com/wip-0/ds207_final_project
 
 X_PATH_TEST_KF_INT = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_kf_group_stratified/X_test.csv"
 Y_PATH_TEST_KF_INT = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_kf_group_stratified/y_test.csv"
+
+
+## 2. Final-Processed Data: K-Fold Grouping with Stratification (Raw)
+
+X_PATH_TRAIN_MINI_KF_F_RAW = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/raw/X_train_mini.csv"
+Y_PATH_TRAIN_MINI_KF_F_RAW  = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/raw/y_train_mini.csv"
+
+X_PATH_VAL_KF_F_RAW  = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/raw/X_val.csv"
+Y_PATH_VAL_KF_F_RAW = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/raw/y_val.csv"
+
+X_PATH_TEST_KF_F_RAW = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/raw/X_test.csv"
+Y_PATH_TEST_KF_F_RAW = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/raw/y_test.csv"
+
+
+## 3. Final-Processed Data: K-Fold Grouping with Stratification (Label Encoded)
+
+X_PATH_TRAIN_MINI_KF_F_LE = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/label/X_train_mini.csv"
+Y_PATH_TRAIN_MINI_KF_F_LE  = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/label/y_train_mini.csv"
+
+X_PATH_VAL_KF_F_LE  = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/label/X_val.csv"
+Y_PATH_VAL_KF_F_LE = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/label/y_val.csv"
+
+X_PATH_TEST_KF_F_LE = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/label/X_test.csv"
+Y_PATH_TEST_KF_F_LE = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/label/y_test.csv"
+
+
+## 4. Final-Processed Data: K-Fold Grouping with Stratification (One Hot Encoded)
+
+X_PATH_TRAIN_MINI_KF_F_OH = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/onehot/X_train_mini.csv"
+Y_PATH_TRAIN_MINI_KF_F_OH  = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/onehot/y_train_mini.csv"
+
+X_PATH_VAL_KF_F_OH  = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/onehot/X_val.csv"
+Y_PATH_VAL_KF_F_OH = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/onehot/y_val.csv"
+
+X_PATH_TEST_KF_F_OH = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/onehot/X_test.csv"
+Y_PATH_TEST_KF_F_OH = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/final_processed/base_kf/onehot/y_test.csv"

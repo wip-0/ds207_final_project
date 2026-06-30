@@ -5,10 +5,9 @@ Import this to your notebook:
 from src.utils.data_fetch import DataLoader
 
 How to use it:
-df_Xtrain, df_Xval, df_Xtest, df_ytrain, df_yval, df_ytest = DataLoader().fetch_data_stratified()
-# or
-df_Xtrain, df_Xval, df_Xtest, df_ytrain, df_yval, df_ytest = DataLoader().fetch_data_group_shuffling()
+df_Xtrain, df_Xval, df_Xtest, df_ytrain, df_yval, df_ytest = DataLoader().fetch_data(version = 'interim')
 
+Other versions: 'final_raw', 'final_label', 'final_onehot'
 """
 
 # imports
@@ -83,32 +82,12 @@ class DataRead(FindProjectRoot):
 
 class DataLoader(DataRead):
     """
-    Handles the loading of data paths and fetching datasets for
-    both classic stratified split and group shuffle split.
+    Handles data loading operations from various directory structures.
 
-    This class provides mechanisms to load file paths for training,
-    validation, and testing datasets based on stratified splits or
-    group shuffle splits. It is used for structured, efficient, and
-    configurable data loading processes.
-
-    :ivar X_PATH_TRAIN_MINI: Path for the stratified mini training dataset.
-    :type X_PATH_TRAIN_MINI: str | None
-    :ivar X_PATH_VAL: Path for the stratified validation dataset.
-    :type X_PATH_VAL: str | None
-    :ivar X_PATH_TEST: Path for the stratified test dataset.
-    :type X_PATH_TEST: str | None
-    :ivar paths_data_: Tuple of all paths (train, validation, test) for the
-        stratified split.
-    :type paths_data_: tuple[str | None, str | None, str | None]
-    :ivar X_PATH_TRAIN_MINI_GS: Path for the group shuffle mini training dataset.
-    :type X_PATH_TRAIN_MINI_GS: str | None
-    :ivar X_PATH_VAL_GS: Path for the group shuffle validation dataset.
-    :type X_PATH_VAL_GS: str | None
-    :ivar X_PATH_TEST_GS: Path for the group shuffle test dataset.
-    :type X_PATH_TEST_GS: str | None
-    :ivar paths_data_gs: Tuple of all paths (train, validation, test) for the
-        group shuffle split.
-    :type paths_data_gs: tuple[str | None, str | None, str | None]
+    This class is responsible for managing paths to data files and reading
+    them into usable formats. It supports different versions of data
+    organization (`interim` and `final_`) and provides an interface to
+    extract and load datasets for training, validation, and testing.
     """
     def __init__(self):
         # self. = ".paths"
@@ -127,23 +106,60 @@ class DataLoader(DataRead):
                 self.Y_PATH_TEST_KF_INT = os.getenv("Y_PATH_TEST_KF_INT")
 
                 # tuple of paths
-                return (
-                    self.X_PATH_TRAIN_MINI_KF_INT,
-                    self.X_PATH_VAL_KF_INT,
-                    self.X_PATH_TEST_KF_INT,
-                    self.Y_PATH_TRAIN_MINI_KF_INT,
-                    self.Y_PATH_VAL_KF_INT,
-                    self.Y_PATH_TEST_KF_INT,
+                return (self.X_PATH_TRAIN_MINI_KF_INT, self.X_PATH_VAL_KF_INT, self.X_PATH_TEST_KF_INT,
+                        self.Y_PATH_TRAIN_MINI_KF_INT, self.Y_PATH_VAL_KF_INT, self.Y_PATH_TEST_KF_INT,
                 )
             
-            elif version == 'final_':
-                 raise NotImplementedError("Directories structure in Github, not yet finalized")
+            elif version == 'final_raw':
+                # X
+                self.X_PATH_TRAIN_MINI_KF_F_RAW = os.getenv("X_PATH_TRAIN_MINI_KF_F_RAW")
+                self.X_PATH_VAL_KF_F_RAW = os.getenv("X_PATH_VAL_KF_F_RAW")
+                self.X_PATH_TEST_KF_F_RAW = os.getenv("X_PATH_TEST_KF_F_RAW")
+                # Y
+                self.Y_PATH_TRAIN_MINI_KF_F_RAW = os.getenv("Y_PATH_TRAIN_MINI_KF_F_RAW")
+                self.Y_PATH_VAL_KF_F_RAW = os.getenv("Y_PATH_VAL_KF_F_RAW")
+                self.Y_PATH_TEST_KF_F_RAW = os.getenv("Y_PATH_TEST_KF_F_RAW")
+
+                # tuple of paths
+                return (self.X_PATH_TRAIN_MINI_KF_F_RAW, self.X_PATH_VAL_KF_F_RAW, self.X_PATH_TEST_KF_F_RAW,
+                        self.Y_PATH_TRAIN_MINI_KF_F_RAW, self.Y_PATH_VAL_KF_F_RAW, self.Y_PATH_TEST_KF_F_RAW,
+                )
+
+            elif version == 'final_label':
+                # X
+                self.X_PATH_TRAIN_MINI_KF_F_LE = os.getenv("X_PATH_TRAIN_MINI_KF_F_LE")
+                self.X_PATH_VAL_KF_F_LE = os.getenv("X_PATH_VAL_KF_F_LE")
+                self.X_PATH_TEST_KF_F_LE = os.getenv("X_PATH_TEST_KF_F_LE")
+                # Y
+                self.Y_PATH_TRAIN_MINI_KF_F_LE = os.getenv("Y_PATH_TRAIN_MINI_KF_F_LE")
+                self.Y_PATH_VAL_KF_F_LE = os.getenv("Y_PATH_VAL_KF_F_LE")
+                self.Y_PATH_TEST_KF_F_LE = os.getenv("Y_PATH_TEST_KF_F_LE")
+
+                # tuple of paths
+                return (self.X_PATH_TRAIN_MINI_KF_F_LE, self.X_PATH_VAL_KF_F_LE, self.X_PATH_TEST_KF_F_LE,
+                        self.Y_PATH_TRAIN_MINI_KF_F_LE, self.Y_PATH_VAL_KF_F_LE, self.Y_PATH_TEST_KF_F_LE,
+                )
+
+            elif version == 'final_onehot':
+                # X
+                self.X_PATH_TRAIN_MINI_KF_F_OH = os.getenv("X_PATH_TRAIN_MINI_KF_F_OH")
+                self.X_PATH_VAL_KF_F_OH = os.getenv("X_PATH_VAL_KF_F_OH")
+                self.X_PATH_TEST_KF_F_OH = os.getenv("X_PATH_TEST_KF_F_OH")
+                # Y
+                self.Y_PATH_TRAIN_MINI_KF_F_OH = os.getenv("Y_PATH_TRAIN_MINI_KF_F_OH")
+                self.Y_PATH_VAL_KF_F_OH = os.getenv("Y_PATH_VAL_KF_F_OH")
+                self.Y_PATH_TEST_KF_F_OH = os.getenv("Y_PATH_TEST_KF_F_OH")
+
+                # tuple of paths
+                return (self.X_PATH_TRAIN_MINI_KF_F_OH, self.X_PATH_VAL_KF_F_OH, self.X_PATH_TEST_KF_F_OH,
+                        self.Y_PATH_TRAIN_MINI_KF_F_OH, self.Y_PATH_VAL_KF_F_OH, self.Y_PATH_TEST_KF_F_OH,
+                )
 
             else:
                 raise ValueError(
                 f"""Invalid version: {version}. 
                 Choose from:
-                'interim' or 'final_'.
+                'interim', 'final_raw', 'final_label', or 'final_onehot'.
                 """)
 
 
@@ -160,4 +176,3 @@ class DataLoader(DataRead):
 
         print(f"""Data imported succesfully from paths""")
         return df_Xtrain, df_Xval, df_Xtest, df_ytrain, df_yval, df_ytest
-

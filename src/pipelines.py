@@ -483,7 +483,7 @@ class HighNoDropper(BaseEstimator, TransformerMixin):
 
 class PrescriptionGrouper(BaseEstimator, TransformerMixin):
 
-    def __init__(self, columns=None, handle_unknown='ignore', sparse_output=False):
+    def __init__(self, columns=None, handle_unknown='ignore', sparse_output=False, enc='onehot'):
         self.columns = columns or [
             'metformin'              , 'repaglinide'           , 'nateglinide',
             'chlorpropamide'         , 'glimepiride'           , 'acetohexamide',
@@ -514,6 +514,7 @@ class PrescriptionGrouper(BaseEstimator, TransformerMixin):
         self.col_in = []
         self.handle_unknown = handle_unknown
         self.sparse_output = sparse_output
+        self.enc = enc
         self.is_fitted_ = False
 
     def process(self, X):
@@ -560,15 +561,31 @@ class PrescriptionGrouper(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         self.col_in = [c for c in self.columns if c in X.columns]
         df_final = self.process(X)
-        self.col_keep = df_final.columns.tolist()
+        out_cols = df_final.columns.tolist()
+        
         if len(self.col_in) > 0:
-            self.encoder_ = OneHotEncoder(
-                handle_unknown=self.handle_unknown,
-                sparse_output=self.sparse_output,
-                # categories=[['No', 'Steady', 'Up', 'Down'] for _ in self.col_in]
-            )
-            self.encoder_.fit(X[self.col_in])
 
+            X_enc = X.reindex(columns=self.col_in, fill_value="No").fillna("No").astype(str)
+
+            if self.enc == 'onehot':
+                self.encoder_ = OneHotEncoder(
+                    handle_unknown=self.handle_unknown,
+                    sparse_output=self.sparse_output,
+                    categories=[['No', 'Steady', 'Up', 'Down'] for _ in self.col_in]
+                )
+                self.encoder_.fit(X_enc)
+                out_cols += self.encoder_.get_feature_names_out(self.col_in).tolist()
+            elif self.enc == 'ordinal':
+                self.encoder_ = OrdinalEncoder(
+                    handle_unknown="use_encoded_value",
+                    unknown_value=-1,
+                    categories=[['No', 'Steady', 'Up', 'Down'] for _ in self.col_in]
+                )
+                self.encoder_.fit(X_enc)
+                out_cols += self.encoder_.get_feature_names_out(self.col_in).tolist()
+            elif self.enc == 'raw':
+                out_cols += self.col_in
+        self.col_keep = out_cols
         self.is_fitted_ = True
         return self
 
@@ -576,18 +593,23 @@ class PrescriptionGrouper(BaseEstimator, TransformerMixin):
         X = X.copy()
         df_final = self.process(X)
 
-        columns = [c for c in self.col_in if c in X.columns]
-        if len(columns) == 0:
-            return pd.DataFrame(index=X.index)
-        encoded = self.encoder_.transform(X[columns])
-        oh_cols = self.encoder_.get_feature_names_out(self.col_in)
-        df_oh = pd.DataFrame(encoded, index=X.index, columns=oh_cols)
+        if len(self.col_in) == 0:
+            return pd.DataFrame(index=X.index, columns=self.col_keep)
 
-        return pd.concat([df_final, df_oh], axis=1)
+        X_enc = X.reindex(columns=self.col_in, fill_value="No").fillna("No").astype(str)
+
+        if self.enc in ['onehot', 'ordinal']:
+            encoded = self.encoder_.transform(X_enc)
+            enc_cols = self.encoder_.get_feature_names_out(self.col_in)
+            df_enc = pd.DataFrame(encoded, index=X.index, columns=enc_cols)
+            df_out = pd.concat([df_final, df_enc], axis=1)
+        elif self.enc == 'raw':
+            df_out = pd.concat([df_final, X_enc], axis=1)
+
+        return df_out.reindex(columns=self.col_keep, fill_value=0)
 
     def get_feature_names_out(self, input_features=None):
-        oh_cols = (self.encoder_.get_feature_names_out(self.col_in) if hasattr(self, "encoder_") else [])
-        return np.array(list(self.col_keep) + list(oh_cols))
+        return np.array(self.col_keep)
 
 
 class PipelineBuilder(object):
@@ -628,7 +650,9 @@ class PipelineBuilder(object):
         custom  = CUSTOM,
     )
 
-    def __init__(self, pipeline_config, column_config):
+    def __init__(self, pipeline_config, column_config, verbose=True):
+
+        self.verbose = verbose
 
         pipeline_config = deepcopy(pipeline_config)
 
@@ -637,6 +661,14 @@ class PipelineBuilder(object):
 
         for col, s in column_config.items():
             pipeline_config[s]['columns'].append(col)
+
+        pipeline_del = []
+        for k, v in pipeline_config.items():
+            if not v['columns']:
+                pipeline_del.append(k)
+
+        for k in pipeline_del:
+            del pipeline_config[k]
 
         self.pipeline_config = pipeline_config
         self.column_config = column_config
@@ -648,15 +680,20 @@ class PipelineBuilder(object):
         ls_transformers = []
 
         for k, v in self.pipeline_config.items():
+            print('Adding pipeline:', k)
             cols = v['columns']
             steps = v['steps']
             trans = Pipeline(steps=[
                 (step['key'], self.REGISTRIES.get(step['registry']).get(step['key'])(**step.get('param', {})))
-                for step in steps]
+                for step in steps],
+                verbose=self.verbose
             )
             ls_transformers.append((k, trans, cols))
+        
+        ct = ColumnTransformer(ls_transformers, **column_transformer_param).set_output(transform='pandas')
+        print('Completed building pipeline.\n')
 
-        return ColumnTransformer(ls_transformers, **column_transformer_param).set_output(transform='pandas')
+        return ct
 
 
 def load_data(type='kf'):

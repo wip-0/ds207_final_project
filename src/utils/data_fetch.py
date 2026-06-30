@@ -5,10 +5,9 @@ Import this to your notebook:
 from src.utils.data_fetch import DataLoader
 
 How to use it:
-df_Xtrain, df_Xval, df_Xtest, df_ytrain, df_yval, df_ytest = DataLoader().fetch_data_stratified()
-# or
-df_Xtrain, df_Xval, df_Xtest, df_ytrain, df_yval, df_ytest = DataLoader().fetch_data_group_shuffling()
+df_Xtrain, df_Xval, df_Xtest, df_ytrain, df_yval, df_ytest = DataLoader().fetch_data(version = 'interim')
 
+Other versions: 'final_raw', 'final_label', 'final_onehot'
 """
 
 # imports
@@ -79,83 +78,94 @@ class DataRead(FindProjectRoot):
 # or
 # df_Xtrain, df_Xval, df_Xtest, df_ytrain, df_yval, df_ytest = DataLoader().fetch_data_group_shuffling()
 
-#TODO: The multiple methods may be optimised if needed to one method with different optons
+#TODO: The multiple methods may be optimised if needed to one method with different options
 
 class DataLoader(DataRead):
     """
-    Handles the loading of data paths and fetching datasets for
-    both classic stratified split and group shuffle split.
+    Handles data loading operations from various directory structures.
 
-    This class provides mechanisms to load file paths for training,
-    validation, and testing datasets based on stratified splits or
-    group shuffle splits. It is used for structured, efficient, and
-    configurable data loading processes.
-
-    :ivar X_PATH_TRAIN_MINI: Path for the stratified mini training dataset.
-    :type X_PATH_TRAIN_MINI: str | None
-    :ivar X_PATH_VAL: Path for the stratified validation dataset.
-    :type X_PATH_VAL: str | None
-    :ivar X_PATH_TEST: Path for the stratified test dataset.
-    :type X_PATH_TEST: str | None
-    :ivar paths_data_: Tuple of all paths (train, validation, test) for the
-        stratified split.
-    :type paths_data_: tuple[str | None, str | None, str | None]
-    :ivar X_PATH_TRAIN_MINI_GS: Path for the group shuffle mini training dataset.
-    :type X_PATH_TRAIN_MINI_GS: str | None
-    :ivar X_PATH_VAL_GS: Path for the group shuffle validation dataset.
-    :type X_PATH_VAL_GS: str | None
-    :ivar X_PATH_TEST_GS: Path for the group shuffle test dataset.
-    :type X_PATH_TEST_GS: str | None
-    :ivar paths_data_gs: Tuple of all paths (train, validation, test) for the
-        group shuffle split.
-    :type paths_data_gs: tuple[str | None, str | None, str | None]
+    This class is responsible for managing paths to data files and reading
+    them into usable formats. It supports different versions of data
+    organization (`interim` and `final_`) and provides an interface to
+    extract and load datasets for training, validation, and testing.
     """
     def __init__(self):
         # self. = ".paths"
         super().__init__()
+        
+    def choose_data(self, version: str = 'interim'):
+            # from interim directory -> split_kf_group_stratified
+            if version == 'interim':
+                # X
+                self.X_PATH_TRAIN_MINI_KF_INT = os.getenv("X_PATH_TRAIN_MINI_KF_INT")
+                self.X_PATH_VAL_KF_INT= os.getenv("X_PATH_VAL_KF_INT")
+                self.X_PATH_TEST_KF_INT = os.getenv("X_PATH_TEST_KF_INT")
+                # Y
+                self.Y_PATH_TRAIN_MINI_KF_INT = os.getenv("Y_PATH_TRAIN_MINI_KF_INT")
+                self.Y_PATH_VAL_KF_INT = os.getenv("Y_PATH_VAL_KF_INT")
+                self.Y_PATH_TEST_KF_INT = os.getenv("Y_PATH_TEST_KF_INT")
 
-        ##################################
-        ### classic stratified split paths
-        self.X_PATH_TRAIN_MINI = os.getenv("X_PATH_TRAIN_MINI")
-        self.X_PATH_VAL = os.getenv("X_PATH_VAL")
-        self.X_PATH_TEST = os.getenv("X_PATH_TEST")
+                # tuple of paths
+                return (self.X_PATH_TRAIN_MINI_KF_INT, self.X_PATH_VAL_KF_INT, self.X_PATH_TEST_KF_INT,
+                        self.Y_PATH_TRAIN_MINI_KF_INT, self.Y_PATH_VAL_KF_INT, self.Y_PATH_TEST_KF_INT,
+                )
+            
+            elif version == 'final_raw':
+                # X
+                self.X_PATH_TRAIN_MINI_KF_F_RAW = os.getenv("X_PATH_TRAIN_MINI_KF_F_RAW")
+                self.X_PATH_VAL_KF_F_RAW = os.getenv("X_PATH_VAL_KF_F_RAW")
+                self.X_PATH_TEST_KF_F_RAW = os.getenv("X_PATH_TEST_KF_F_RAW")
+                # Y
+                self.Y_PATH_TRAIN_MINI_KF_F_RAW = os.getenv("Y_PATH_TRAIN_MINI_KF_F_RAW")
+                self.Y_PATH_VAL_KF_F_RAW = os.getenv("Y_PATH_VAL_KF_F_RAW")
+                self.Y_PATH_TEST_KF_F_RAW = os.getenv("Y_PATH_TEST_KF_F_RAW")
 
-        self.Y_PATH_TRAIN_MINI = os.getenv("Y_PATH_TRAIN_MINI")
-        self.Y_PATH_VAL = os.getenv("Y_PATH_VAL")
-        self.Y_PATH_TEST = os.getenv("Y_PATH_TEST")
+                # tuple of paths
+                return (self.X_PATH_TRAIN_MINI_KF_F_RAW, self.X_PATH_VAL_KF_F_RAW, self.X_PATH_TEST_KF_F_RAW,
+                        self.Y_PATH_TRAIN_MINI_KF_F_RAW, self.Y_PATH_VAL_KF_F_RAW, self.Y_PATH_TEST_KF_F_RAW,
+                )
 
-        # tuple of paths
-        self.paths_data_ = (self.X_PATH_TRAIN_MINI,
-                            self.X_PATH_VAL,
-                            self.X_PATH_TEST,
-                            self.Y_PATH_TRAIN_MINI,
-                            self.Y_PATH_VAL,
-                            self.Y_PATH_TEST
-                            )
+            elif version == 'final_label':
+                # X
+                self.X_PATH_TRAIN_MINI_KF_F_LE = os.getenv("X_PATH_TRAIN_MINI_KF_F_LE")
+                self.X_PATH_VAL_KF_F_LE = os.getenv("X_PATH_VAL_KF_F_LE")
+                self.X_PATH_TEST_KF_F_LE = os.getenv("X_PATH_TEST_KF_F_LE")
+                # Y
+                self.Y_PATH_TRAIN_MINI_KF_F_LE = os.getenv("Y_PATH_TRAIN_MINI_KF_F_LE")
+                self.Y_PATH_VAL_KF_F_LE = os.getenv("Y_PATH_VAL_KF_F_LE")
+                self.Y_PATH_TEST_KF_F_LE = os.getenv("Y_PATH_TEST_KF_F_LE")
 
-        ##################################
-        ### group shuffle split paths ###
-        self.X_PATH_TRAIN_MINI_GS = os.getenv("X_PATH_TRAIN_MINI_GS")
-        self.X_PATH_VAL_GS = os.getenv("X_PATH_VAL_GS")
-        self.X_PATH_TEST_GS = os.getenv("X_PATH_TEST_GS")
+                # tuple of paths
+                return (self.X_PATH_TRAIN_MINI_KF_F_LE, self.X_PATH_VAL_KF_F_LE, self.X_PATH_TEST_KF_F_LE,
+                        self.Y_PATH_TRAIN_MINI_KF_F_LE, self.Y_PATH_VAL_KF_F_LE, self.Y_PATH_TEST_KF_F_LE,
+                )
 
-        self.Y_PATH_TRAIN_MINI_GS = os.getenv("Y_PATH_TRAIN_MINI_GS")
-        self.Y_PATH_VAL_GS = os.getenv("Y_PATH_VAL_GS")
-        self.Y_PATH_TEST_GS = os.getenv("Y_PATH_TEST_GS")
+            elif version == 'final_onehot':
+                # X
+                self.X_PATH_TRAIN_MINI_KF_F_OH = os.getenv("X_PATH_TRAIN_MINI_KF_F_OH")
+                self.X_PATH_VAL_KF_F_OH = os.getenv("X_PATH_VAL_KF_F_OH")
+                self.X_PATH_TEST_KF_F_OH = os.getenv("X_PATH_TEST_KF_F_OH")
+                # Y
+                self.Y_PATH_TRAIN_MINI_KF_F_OH = os.getenv("Y_PATH_TRAIN_MINI_KF_F_OH")
+                self.Y_PATH_VAL_KF_F_OH = os.getenv("Y_PATH_VAL_KF_F_OH")
+                self.Y_PATH_TEST_KF_F_OH = os.getenv("Y_PATH_TEST_KF_F_OH")
 
-        # tuple of paths
-        self.paths_data_gs = (self.X_PATH_TRAIN_MINI_GS,
-                              self.X_PATH_VAL_GS,
-                              self.X_PATH_TEST_GS,
-                              self.Y_PATH_TRAIN_MINI_GS,
-                              self.Y_PATH_VAL_GS,
-                              self.Y_PATH_TEST_GS
-                              )
+                # tuple of paths
+                return (self.X_PATH_TRAIN_MINI_KF_F_OH, self.X_PATH_VAL_KF_F_OH, self.X_PATH_TEST_KF_F_OH,
+                        self.Y_PATH_TRAIN_MINI_KF_F_OH, self.Y_PATH_VAL_KF_F_OH, self.Y_PATH_TEST_KF_F_OH,
+                )
 
-    # to deprecate
-    def fetch_data_stratified(self):
-        # classic stratified split
-        paths_tuple = self.paths_data_
+            else:
+                raise ValueError(
+                f"""Invalid version: {version}. 
+                Choose from:
+                'interim', 'final_raw', 'final_label', or 'final_onehot'.
+                """)
+
+
+    def fetch_data(self, version: str = 'interim'):
+        #extract data from choose data path
+        paths_tuple = self.choose_data(version)
 
         df_Xtrain = self.data_read(paths_tuple[0])
         df_Xval = self.data_read(paths_tuple[1])
@@ -166,20 +176,3 @@ class DataLoader(DataRead):
 
         print(f"""Data imported succesfully from paths""")
         return df_Xtrain, df_Xval, df_Xtest, df_ytrain, df_yval, df_ytest
-
-    # to deprecate
-    def fetch_data_group_shuffling(self):
-        # group shuffling by
-        # Patient ID + stratification
-        paths_tuple = self.paths_data_gs
-
-        df_Xtrain = self.data_read(paths_tuple[0])
-        df_Xval = self.data_read(paths_tuple[1])
-        df_Xtest = self.data_read(paths_tuple[2])
-        df_ytrain = self.data_read(paths_tuple[3])
-        df_yval = self.data_read(paths_tuple[4])
-        df_ytest = self.data_read(paths_tuple[5])
-
-        print(f"""Data imported succesfully from paths""")
-        return df_Xtrain, df_Xval, df_Xtest, df_ytrain, df_yval, df_ytest
-

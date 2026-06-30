@@ -79,7 +79,7 @@ class DataRead(FindProjectRoot):
 # or
 # df_Xtrain, df_Xval, df_Xtest, df_ytrain, df_yval, df_ytest = DataLoader().fetch_data_group_shuffling()
 
-#TODO: The multiple methods may be optimised if needed to one method with different optons
+#TODO: The multiple methods may be optimised if needed to one method with different options
 
 class DataLoader(DataRead):
     """
@@ -113,65 +113,43 @@ class DataLoader(DataRead):
     def __init__(self):
         # self. = ".paths"
         super().__init__()
+        
+    def choose_data(self, version: str = 'interim'):
+            # from interim directory -> split_kf_group_stratified
+            if version == 'interim':
+                # X
+                self.X_PATH_TRAIN_MINI_KF_INT = os.getenv("X_PATH_TRAIN_MINI_KF_INT")
+                self.X_PATH_VAL_KF_INT= os.getenv("X_PATH_VAL_KF_INT")
+                self.X_PATH_TEST_KF_INT = os.getenv("X_PATH_TEST_KF_INT")
+                # Y
+                self.Y_PATH_TRAIN_MINI_KF_INT = os.getenv("Y_PATH_TRAIN_MINI_KF_INT")
+                self.Y_PATH_VAL_KF_INT = os.getenv("Y_PATH_VAL_KF_INT")
+                self.Y_PATH_TEST_KF_INT = os.getenv("Y_PATH_TEST_KF_INT")
 
-        ##################################
-        ### classic stratified split paths
-        self.X_PATH_TRAIN_MINI = os.getenv("X_PATH_TRAIN_MINI")
-        self.X_PATH_VAL = os.getenv("X_PATH_VAL")
-        self.X_PATH_TEST = os.getenv("X_PATH_TEST")
+                # tuple of paths
+                return (
+                    self.X_PATH_TRAIN_MINI_KF_INT,
+                    self.X_PATH_VAL_KF_INT,
+                    self.X_PATH_TEST_KF_INT,
+                    self.Y_PATH_TRAIN_MINI_KF_INT,
+                    self.Y_PATH_VAL_KF_INT,
+                    self.Y_PATH_TEST_KF_INT,
+                )
+            
+            elif version == 'final_':
+                 raise NotImplementedError("Directories structure in Github, not yet finalized")
 
-        self.Y_PATH_TRAIN_MINI = os.getenv("Y_PATH_TRAIN_MINI")
-        self.Y_PATH_VAL = os.getenv("Y_PATH_VAL")
-        self.Y_PATH_TEST = os.getenv("Y_PATH_TEST")
+            else:
+                raise ValueError(
+                f"""Invalid version: {version}. 
+                Choose from:
+                'interim' or 'final_'.
+                """)
 
-        # tuple of paths
-        self.paths_data_ = (self.X_PATH_TRAIN_MINI,
-                            self.X_PATH_VAL,
-                            self.X_PATH_TEST,
-                            self.Y_PATH_TRAIN_MINI,
-                            self.Y_PATH_VAL,
-                            self.Y_PATH_TEST
-                            )
 
-        ##################################
-        ### group shuffle split paths ###
-        self.X_PATH_TRAIN_MINI_GS = os.getenv("X_PATH_TRAIN_MINI_GS")
-        self.X_PATH_VAL_GS = os.getenv("X_PATH_VAL_GS")
-        self.X_PATH_TEST_GS = os.getenv("X_PATH_TEST_GS")
-
-        self.Y_PATH_TRAIN_MINI_GS = os.getenv("Y_PATH_TRAIN_MINI_GS")
-        self.Y_PATH_VAL_GS = os.getenv("Y_PATH_VAL_GS")
-        self.Y_PATH_TEST_GS = os.getenv("Y_PATH_TEST_GS")
-
-        # tuple of paths
-        self.paths_data_gs = (self.X_PATH_TRAIN_MINI_GS,
-                              self.X_PATH_VAL_GS,
-                              self.X_PATH_TEST_GS,
-                              self.Y_PATH_TRAIN_MINI_GS,
-                              self.Y_PATH_VAL_GS,
-                              self.Y_PATH_TEST_GS
-                              )
-
-    # to deprecate
-    def fetch_data_stratified(self):
-        # classic stratified split
-        paths_tuple = self.paths_data_
-
-        df_Xtrain = self.data_read(paths_tuple[0])
-        df_Xval = self.data_read(paths_tuple[1])
-        df_Xtest = self.data_read(paths_tuple[2])
-        df_ytrain = self.data_read(paths_tuple[3])
-        df_yval = self.data_read(paths_tuple[4])
-        df_ytest = self.data_read(paths_tuple[5])
-
-        print(f"""Data imported succesfully from paths""")
-        return df_Xtrain, df_Xval, df_Xtest, df_ytrain, df_yval, df_ytest
-
-    # to deprecate
-    def fetch_data_group_shuffling(self):
-        # group shuffling by
-        # Patient ID + stratification
-        paths_tuple = self.paths_data_gs
+    def fetch_data(self, version: str = 'interim'):
+        #extract data from choose data path
+        paths_tuple = self.choose_data(version)
 
         df_Xtrain = self.data_read(paths_tuple[0])
         df_Xval = self.data_read(paths_tuple[1])

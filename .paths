@@ -1,24 +1,10 @@
-## Interim Data: Group-Shuffle by Patient ID (Stratified by Y-target)
+## 1. Interim Data: K-Fold Grouping with Stratification
 
-X_PATH_TRAIN_MINI_GS = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_groupshuffle/X_train_mini.csv"
-Y_PATH_TRAIN_MINI_GS = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_groupshuffle/y_train_mini.csv"
+X_PATH_TRAIN_MINI_KF_INT = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_kf_group_stratified/X_train_mini.csv"
+Y_PATH_TRAIN_MINI_KF_INT = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_kf_group_stratified/y_train_mini.csv"
 
-X_PATH_VAL_GS = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_groupshuffle/X_val.csv"
-Y_PATH_VAL_GS = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_groupshuffle/y_val.csv"
+X_PATH_VAL_KF_INT = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_kf_group_stratified/X_val.csv"
+Y_PATH_VAL_KF_INT = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_kf_group_stratified/y_val.csv"
 
-X_PATH_TEST_GS = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_groupshuffle/X_test.csv"
-Y_PATH_TEST_GS = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_groupshuffle/y_test.csv"
-
-## Interim Data: Classic split (Stratified by Y-target)
-
-X_PATH_TRAIN_MINI = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_stratified/X_train_mini.csv"
-Y_PATH_TRAIN_MINI = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_stratified/y_train_mini.csv"
-
-X_PATH_VAL = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_stratified/X_val.csv"
-Y_PATH_VAL = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_stratified/y_val.csv"
-
-X_PATH_TEST = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_stratified/X_test.csv"
-Y_PATH_TEST = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_stratified/y_test.csv"
-
-
-## Place any other paths here in the same logic
+X_PATH_TEST_KF_INT = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_kf_group_stratified/X_test.csv"
+Y_PATH_TEST_KF_INT = "https://raw.githubusercontent.com/wip-0/ds207_final_project/refs/heads/main/data/interim/split_kf_group_stratified/y_test.csv"

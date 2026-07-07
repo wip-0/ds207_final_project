@@ -119,38 +119,43 @@ def plot_roc_curves(y_test,
     return auc_scores
 
 
-def plot_confusion_matrix(y_test,
+def plot_confusion_matrix(y_true,
                           y_pred,
                           title='Confusion Matrix',
                           class_names=None,
-                          average='binary'):
+                          average='binary',
+                          fig_size = (6, 6)):
     """
     Plot a confusion matrix from true labels and predicted labels.
 
     Parameters:
-        y_test: True target values.
+        y_true: True target values.
         y_pred: Predicted target values.
         title: Plot title.
         class_names: Optional class labels for the matrix axes.
         average: Averaging method for precision/recall.
                  Use 'binary' for binary classification,
                  'macro' or 'weighted' for multiclass.
+        fig_size: Figure size.
     """
 
     # Calculate precision and recall
-    precision = precision_score(y_test, y_pred,
+    precision = precision_score(y_true, y_pred,
                                 average=average,
                                 zero_division=0)
-    recall = recall_score(y_test, y_pred,
+    recall = recall_score(y_true, y_pred,
                           average=average,
                           zero_division=0)
 
     # Generate confusion matrix
-    cm = confusion_matrix(y_test, y_pred)
+    cm = confusion_matrix(y_true, y_pred)
 
-    # Plot confusion matrix
-    plt.figure(figsize=(6, 6))
+    # Generate default class names if not provided
+    if class_names is None:
+        class_names = [f'Class {i}' for i in range(cm.shape[0])]
 
+    ## Confusion matrix
+    plt.figure(figsize= fig_size)
     # plot heatmap
     sns.heatmap( cm, annot=True, fmt='d',
                  cmap='Blues',
@@ -160,20 +165,17 @@ def plot_confusion_matrix(y_test,
     plt.xlabel('Predicted Label')
     plt.ylabel('True Label')
     plt.title(title)
-
     # Add Precision and Recall formulas/scores as text in the matrix
     plt.text(1.55, 0.9,
               r'$Precision = \frac{TP}{TP + FP}$' + '\n' + f'Score: {precision:.2f}',
               horizontalalignment='center',
               verticalalignment='center',
               transform=plt.gca().transAxes)
-
     plt.text(1.55, 0.7,
              r'$Recall = \frac{TP}{TP + FN}$' + '\n' + f'Score: {recall:.2f}',
             horizontalalignment='center',
             verticalalignment='center',
             transform=plt.gca().transAxes)
-
     plt.tight_layout()
     plt.show()
 

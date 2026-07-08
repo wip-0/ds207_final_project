@@ -124,7 +124,8 @@ def plot_confusion_matrix(y_true,
                           title='Confusion Matrix',
                           class_names=None,
                           average='binary',
-                          fig_size = (6, 6)):
+                          fig_size = (6, 6),
+                          colour_map= 'Blues'):
     """
     Plot a confusion matrix from true labels and predicted labels.
 
@@ -158,7 +159,7 @@ def plot_confusion_matrix(y_true,
     plt.figure(figsize= fig_size)
     # plot heatmap
     sns.heatmap( cm, annot=True, fmt='d',
-                 cmap='Blues',
+                 cmap= colour_map,
                  xticklabels=class_names,
                  yticklabels=class_names
     )

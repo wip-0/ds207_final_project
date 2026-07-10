@@ -263,7 +263,7 @@ requires-dist = [
     { name = "graphviz", specifier = "==0.21" },
     { name = "ipykernel", specifier = ">=7.2.0" },
     { name = "keras", specifier = ">=3.14.0" },
-    { name = "matplotlib", specifier = ">=3.10.9" },
+    { name = "matplotlib", specifier = ">=3.8,<3.11" },
     { name = "mlxtend", specifier = ">=0.23.4" },
     { name = "nbformat", specifier = ">=5.10.4" },
     { name = "numpy", marker = "platform_machine != 'x86_64' or sys_platform != 'darwin'", specifier = ">=2.4.6" },

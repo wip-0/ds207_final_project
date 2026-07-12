@@ -870,3 +870,12 @@ if __name__ == '__main__':
     pipeline = PipelineBuilder(PIPELINE_CONFIG, COLUMN_CONFIG).build()
     pipeline.fit(df)
     df_new = pipeline.transform(df)
+
+    from src.utils.data_fetch import DataLoader
+
+
+    X_train_mini, X_val, X_test, y_train_mini, y_val, y_test = DataLoader().fetch_data(version="interim")
+    df_icd9 = pd.read_csv(r"C:\Users\waii\Downloads\FY2010Diagnosis-ProcedureCodesFullTitles\V27LONG_SHORT_DX_110909.csv", dtype=str, encoding="latin-1")
+    # df_icd9['DIASNOSIS CODE'].apply(lambda x: )
+    #
+    # df['diag_1'].apply(lambda x: x.zfill(3) if )

@@ -39,6 +39,7 @@ dependencies = [
     "optuna-integration>=4.9.0",
     "cupy-cuda12x>=14.1.1 ; sys_platform == 'win32'",
     "tqdm>=4.67.3",
+    "onnxmltools>=1.16.0",
 ]
 
 [tool.uv]

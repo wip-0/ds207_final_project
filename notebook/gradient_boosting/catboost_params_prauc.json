@@ -1,0 +1,1 @@
+{"bootstrap_type": "Bernoulli", "border_count": 32, "depth": 8, "learning_rate": 0.010402479887269429, "random_strength": 0.004712340567172488, "l2_leaf_reg": 4.319561334145006, "scale_pos_weight": 0.8721130045881371, "subsample": 0.4598771696118779, "iterations": 2277}

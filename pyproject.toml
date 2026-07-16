@@ -40,6 +40,7 @@ dependencies = [
     "cupy-cuda12x>=14.1.1 ; sys_platform == 'win32'",
     "tqdm>=4.67.3",
     "onnxmltools>=1.16.0",
+    "icd9cms>=0.2.1",
 ]
 
 [tool.uv]

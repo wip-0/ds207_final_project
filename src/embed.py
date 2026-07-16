@@ -1,6 +1,4 @@
 from pathlib import Path
-
-from numpy.f2py.crackfortran import ignorecontains
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import cos_sim
 from icd9cms.icd9 import search
@@ -81,7 +79,6 @@ if __name__ == '__main__':
     import pandas as pd
     import numpy as np
     from pathlib import Path
-    from copy import deepcopy
     from src.utils.data_fetch import DataLoader
 
     model_name = 'FremyCompany/BioLORD-2023'

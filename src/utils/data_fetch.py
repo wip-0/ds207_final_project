@@ -167,3 +167,64 @@ class DataLoader(DataRead):
 
         print(f"""Data imported succesfully from paths""")
         return df_Xtrain, df_Xval, df_Xtest, df_ytrain, df_yval, df_ytest
+
+
+
+### WRAPPER TO QUICKLY IMPORT DATA ###
+def import_data(version='final_onehot', access= 'remote'):
+    """
+    Import train, validation, and test datasets.
+
+    Parameters:
+    - version: str, one of 'interim', 'final_raw', 'final_label', 'final_onehot'
+    - access: str, 'local' or 'remote'
+    """
+
+    version_map = {
+        'interim': 'interim/split_kf_group_stratified',
+        'final_raw': 'final_processed/base_kf/raw',
+        'final_label': 'final_processed/base_kf/label',
+        'final_onehot': 'final_processed/base_kf/onehot'
+    }
+
+    if access == 'remote':
+        # Use the DataLoader which handles remote URLs properly
+        loader = DataLoader()
+        return loader.fetch_data(version=version)
+
+    elif access == 'local':
+        import pandas as pd
+        from pathlib import Path
+
+        # Find project root (where .paths file is located)
+        current = Path.cwd()
+        while not (current / '.paths').exists():
+            if current.parent == current:
+                raise FileNotFoundError("Could not find project root with .paths file")
+            current = current.parent
+
+        project_root = current
+        data_dir = project_root / 'data' / version_map[version]
+
+        # Check if directory exists
+        if not data_dir.exists():
+            raise FileNotFoundError(
+                f"Data directory does not exist: {data_dir}\n"
+                f"Please use access='remote' to download from GitHub, "
+                f"or ensure local data is available."
+            )
+
+        # Read the CSV files
+        df_Xtrain = pd.read_csv(data_dir / 'X_train_mini.csv', low_memory=False)
+        df_Xval = pd.read_csv(data_dir / 'X_val.csv', low_memory=False)
+        df_Xtest = pd.read_csv(data_dir / 'X_test.csv', low_memory=False)
+        df_ytrain = pd.read_csv(data_dir / 'y_train_mini.csv', low_memory=False)
+        df_yval = pd.read_csv(data_dir / 'y_val.csv', low_memory=False)
+        df_ytest = pd.read_csv(data_dir / 'y_test.csv', low_memory=False)
+
+        print(f"Data imported successfully from: {data_dir}")
+        return df_Xtrain, df_Xval, df_Xtest, df_ytrain, df_yval, df_ytest
+
+    else:
+        raise ValueError(f"Invalid access type: {access}."
+                           f"Choose 'local' or 'remote'")

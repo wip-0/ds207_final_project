@@ -1,0 +1,11 @@
+{
+  "batch_size": 512,
+  "positive_class_weight": 1.3,
+  "n_dense_layers": 1,
+  "units_l1": 256,
+  "embedding_dim": 4,
+  "kernel_regularizer": 0.0005261191500114241,
+  "learning_rate": 0.0006848852006585244,
+  "dropout_rate": 0.25,
+  "LeakyReLU_alpha": 0.1
+}

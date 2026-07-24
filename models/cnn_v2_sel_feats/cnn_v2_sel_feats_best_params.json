@@ -1,0 +1,17 @@
+{
+  "batch_size": 128,
+  "positive_class_weight": 1.05,
+  "n_conv_layers": 4,
+  "filters_l1": 64,
+  "filters_l2": 128,
+  "filters_l3": 64,
+  "filters_l4": 16,
+  "embedding_dim": 7,
+  "kernel_size": 3,
+  "dense_units": 64,
+  "kernel_regularizer": 5.772788969245264e-05,
+  "learning_rate": 0.0002934948106304758,
+  "dropout_rate": 0.05,
+  "LeakyReLU_alpha": 0.3,
+  "pooling_type": "average"
+}

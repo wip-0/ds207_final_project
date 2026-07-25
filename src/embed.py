@@ -1,3 +1,6 @@
+import os
+import pandas as pd
+import numpy as np
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import cos_sim
@@ -71,25 +74,17 @@ def convert_icd9(df):
         df_out[c + '_desc'] = df[c].apply(lambda x: icd9_to_desc(x, col=c))
     return df_out
 
-    
-if __name__ == '__main__':
 
-    import os
-    import json
-    import pandas as pd
-    import numpy as np
-    from pathlib import Path
-    from src.utils.data_fetch import DataLoader
+def render_atlas(path, param):
+    """
+    Render embedding-atlas app.
 
-    model_name = 'FremyCompany/BioLORD-2023'
-    cache_folder = Path(r"D:\Models\HuggingFace")
-    model = get_embedder(model_name, cache_folder=cache_folder)
-
-    X_train_raw, X_val_raw, X_test_raw, _, _, _ = DataLoader().fetch_data('interim')
-    
-    df_icd9_train = convert_icd9(X_train_raw)
-    df_icd9_val = convert_icd9(X_val_raw)
-    df_icd9_test = convert_icd9(X_test_raw)
-
-    emb = model.encode(df_icd9_train['diag_1_desc'].tolist()[:200], normalize_embeddings=True)
-
+    Args:
+        path: target file path
+        param: dictionary of command line arguments
+    """
+    arg = ''
+    for k, v in param.items():
+        arg += f' --{k} {v}'
+    cmd = f'embedding-atlas {path}' + arg
+    os.system(cmd)

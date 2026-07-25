@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Notebook
+/notebook/gradient_boosting/archive/
+notebook/gradient_boosting/archive/

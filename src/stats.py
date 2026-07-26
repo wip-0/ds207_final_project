@@ -426,6 +426,8 @@ def compare_adjacent_models(y_true,
         model_a = names[i]
         model_b = names[i + 1]
 
+        print(f'{model_b} - {model_a}')
+
         result = paired_boostrap_prauc_diff(
             y_true=y_true,
             y_prob_a=dict_prob[model_a],
@@ -440,7 +442,6 @@ def compare_adjacent_models(y_true,
             'model_a_prauc': result['score_a'],
             'model_b_prauc': result['score_b'],
             'observed_diff': result['observed_diff'],
-            'bootstrap_diff': result['bootstrap_diff'],
             'ci_lower': result['ci_lower'],
             'ci_upper': result['ci_upper'],
             'ci_ex_zero': ((result['ci_lower'] > 0) or (result['ci_upper'] < 0)),

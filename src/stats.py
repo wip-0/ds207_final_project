@@ -14,6 +14,7 @@ from statsmodels.formula.api import ols
 from statsmodels.stats.anova import anova_lm
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from statsmodels.stats.outliers_influence import variance_inflation_factor
+from sklearn.metrics import average_precision_score
 
 
 def contingency_table(df: pd.DataFrame,
@@ -331,3 +332,119 @@ def tukey_hsd(df: pd.DataFrame,
             tukey['ind_var'] = ind
             result.append(tukey[['dep_var', 'ind_var'] + tukey.columns.difference(['dep_var', 'ind_var']).to_list()])
     return pd.concat(result, axis=0, ignore_index=True)
+
+
+def paired_boostrap_prauc_diff(y_true,
+                               y_prob_a,
+                               y_prob_b,
+                               n_bootstrap=5000,
+                               confidence_level=0.95,
+                               random_state=42
+                               ):
+    """
+    Calculate paired bootstrap performance differences between models in terms of PRAUC.
+
+    Args:
+        y_true: true outcome
+        y_prob_a: prediction probabilities from model a
+        y_prob_b: prediction probabilities from model b
+        n_bootstrap: number of bootstrap samples
+        confidence_level: confidence level
+        random_state: random seed
+
+    Returns:
+        Bootstrapped results
+    """
+    rng = np.random.default_rng(random_state)
+    n = len(y_true)
+    score_a = average_precision_score(y_true, y_prob_a)
+    score_b = average_precision_score(y_true, y_prob_b)
+    observed_diff = score_b - score_a
+
+    bootstrap_diff: list[float] = []
+
+    for _ in range(n_bootstrap):
+        indices = rng.integers(0, n, size=n)
+
+        y_boot = y_true[indices]
+
+        if np.unique(y_boot).size < 2:
+            continue
+
+        score_a_boot = average_precision_score(
+            y_boot,
+            y_prob_a[indices],
+        )
+        score_b_boot = average_precision_score(
+            y_boot,
+            y_prob_b[indices],
+        )
+
+        bootstrap_diff.append(score_b_boot - score_a_boot)
+
+    bs_diff = np.asarray(bootstrap_diff)
+
+    # if differences.size == 0:
+    #     raise RuntimeError("No valid bootstrap samples were generated.")
+
+    alpha = 1.0 - confidence_level
+    ci_lower, ci_upper = np.quantile(bs_diff,[alpha / 2, 1 - alpha / 2])
+
+    return dict(
+        score_a=float(score_a),
+        score_b=float(score_b),
+        observed_diff=float(observed_diff),
+        bootstrap_diff=bs_diff,
+        ci_lower=float(ci_lower),
+        ci_upper=float(ci_upper),
+        prob_b_better=float(np.mean(bs_diff > 0)),
+    )
+
+def compare_adjacent_models(y_true,
+                            dict_prob,
+                            n_bootstrap=5000,
+                            confidence_level=0.95,
+                            random_state=42
+                            ):
+    """
+    Compare PRAUC across models in order in predictions probability dictionary.
+
+    Args:
+        y_true: true outcome
+        dict_prob: dictionary of model probabilities
+        n_bootstrap: number of bootstrap samples
+        confidence_level: confidence level
+        random_state: random seed
+
+    Returns:
+        Bootstrapped results
+    """
+    names = list(dict_prob.keys())
+    rows = []
+
+    for i in range(len(names) - 1):
+        model_a = names[i]
+        model_b = names[i + 1]
+
+        result = paired_boostrap_prauc_diff(
+            y_true=y_true,
+            y_prob_a=dict_prob[model_a],
+            y_prob_b=dict_prob[model_b],
+            n_bootstrap=n_bootstrap,
+            confidence_level=confidence_level,
+            random_state=random_state + i,
+        )
+
+        rows.append({
+            'comparison': f'{model_b} - {model_a}',
+            'model_a_prauc': result['score_a'],
+            'model_b_prauc': result['score_b'],
+            'observed_diff': result['observed_diff'],
+            'bootstrap_diff': result['bootstrap_diff'],
+            'ci_lower': result['ci_lower'],
+            'ci_upper': result['ci_upper'],
+            'ci_ex_zero': ((result['ci_lower'] > 0) or (result['ci_upper'] < 0)),
+            'prob_b_better': result['prob_b_better'],
+        })
+
+    return pd.DataFrame(rows)

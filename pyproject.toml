@@ -43,6 +43,7 @@ dependencies = [
     "icd9cms>=0.2.1",
     "shap>=0.49.1",
     "embedding-atlas>=0.22.0",
+    "dalex>=1.7.1",
 ]
 
 [tool.uv]

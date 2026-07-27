@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 if not hasattr(np, "in1d"):
     np.in1d = np.isin
 
+import xgboost
 import dalex as dx
 from pathlib import Path
 from copy import deepcopy
@@ -264,17 +265,20 @@ DICT_ADDED_FEATURES['m7'] = 'Clinical (Raw, Target Encoded)'
 DICT_ADDED_FEATURES['m8'] = 'Diagnosis (Raw, Target Encoded)'
 DICT_ADDED_FEATURES['m9'] = 'Payer Code & Weight (Raw)'
 
-
 RUN_PREDICTIVE_CONTRI = False
 RUN_FEATURE_GROUP_IMP_CONCEPT = False
 RUN_FEATURE_GROUP_IMP_REP = False
 RUN_SHAP_IMPORTANCE = False
+RUN_SHAP_GROUP = False
+RUN_SHAP_INTERACTION = False
+RUN_SHAP_DEPENDENCY = False
 
 # 1. Predictive Contribution -------------------------------------------------------------------------------------------
 
 if RUN_PREDICTIVE_CONTRI:
 
-    ls_perf = []
+    ls_perf_train = []
+    ls_perf_val = []
     dict_prob = dict()
 
     # Get predictive performances using validation data
@@ -284,13 +288,30 @@ if RUN_PREDICTIVE_CONTRI:
 
         features = model.feature_names_in_
         if k == 'm0':
+            y_prob_train = model.predict_proba(X_train_oh[features])[:, 1]
+            y_pred_train = model.predict(X_train_oh[features])
             y_prob_val = model.predict_proba(X_val_oh[features])[:, 1]
             y_pred_val = model.predict(X_val_oh[features])
         else:
+            y_prob_train = model.predict_proba(X_train[features])[:, 1]
+            y_pred_train = model.predict(X_train[features])
             y_prob_val = model.predict_proba(X_val[features])[:, 1]
             y_pred_val = model.predict(X_val[features])
 
-        dict_perf = dict(
+        dict_perf_train = dict(
+            model        = k,
+            new_features = DICT_ADDED_FEATURES[k],
+            recall       = recall_score(y_train           , y_pred_train),
+            precision    = precision_score(y_train        , y_pred_train),
+            accuracy     = accuracy_score(y_train         , y_pred_train),
+            roc_auc      = roc_auc_score(y_train          , y_prob_train),
+            prauc        = average_precision_score(y_train, y_prob_train),
+            f1           = f1_score(y_train               , y_pred_train),
+            f2           = fbeta_score(y_train            , y_pred_train , beta = 2),
+        )
+        ls_perf_train.append(dict_perf_train)
+
+        dict_perf_val = dict(
             model        = k,
             new_features = DICT_ADDED_FEATURES[k],
             recall       = recall_score(y_val           , y_pred_val),
@@ -301,15 +322,21 @@ if RUN_PREDICTIVE_CONTRI:
             f1           = f1_score(y_val               , y_pred_val),
             f2           = fbeta_score(y_val            , y_pred_val , beta = 2),
         )
-        ls_perf.append(dict_perf)
+        ls_perf_val.append(dict_perf_val)
 
         dict_prob[k] = y_prob_val
 
-    df_perf = pd.DataFrame(ls_perf)
-    df_perf['d_prauc'] = df_perf['prauc'].diff()
-    df_perf.loc[df_perf['model'].isin(['m0', 'm1']), 'd_prauc'] = np.nan
-    df_perf.set_index('model', inplace=True)
-    df_perf.to_csv(PATH_XGB_ANALYSIS / 'ana1_perf_contri.csv')
+    df_perf_train = pd.DataFrame(ls_perf_train)
+    df_perf_train['d_prauc'] = df_perf_train['prauc'].diff()
+    df_perf_train.loc[df_perf_train['model'].isin(['m0', 'm1']), 'd_prauc'] = np.nan
+    df_perf_train.set_index('model', inplace=True)
+    df_perf_train.to_csv(PATH_XGB_ANALYSIS / 'ana1_perf_contri_train.csv')
+
+    df_perf_val = pd.DataFrame(ls_perf_val)
+    df_perf_val['d_prauc'] = df_perf_val['prauc'].diff()
+    df_perf_val.loc[df_perf_val['model'].isin(['m0', 'm1']), 'd_prauc'] = np.nan
+    df_perf_val.set_index('model', inplace=True)
+    df_perf_val.to_csv(PATH_XGB_ANALYSIS / 'ana1_perf_contri_val.csv')
 
     # Get PRAUC comparisons
     df_prauc = compare_adjacent_models(y_val.values, dict_prob, n_bootstrap=5000, random_state=42)
@@ -317,7 +344,8 @@ if RUN_PREDICTIVE_CONTRI:
     df_prauc.to_csv(PATH_XGB_ANALYSIS / 'ana1_perf_contri_prauc.csv')
 
 else:
-    df_perf = pd.read_csv(PATH_XGB_ANALYSIS / 'ana1_perf_contri.csv', index_col=0)
+    df_perf_train = pd.read_csv(PATH_XGB_ANALYSIS / 'ana1_perf_contri_train.csv', index_col=0)
+    df_perf_val = pd.read_csv(PATH_XGB_ANALYSIS / 'ana1_perf_contri_val.csv', index_col=0)
     df_prauc = pd.read_csv(PATH_XGB_ANALYSIS / 'ana1_perf_contri_prauc.csv', index_col=0)
 
 
@@ -415,7 +443,7 @@ feature_groups_concept = {
 if RUN_FEATURE_GROUP_IMP_CONCEPT:
 
     # Get last model and data
-    k = "m9"
+    k = 'm9'
     model = DICT_MODEL_OUTPUT[k]
     x = X_val[model.feature_names_in_]
 
@@ -428,10 +456,16 @@ if RUN_FEATURE_GROUP_IMP_CONCEPT:
                                                        processes=1,
                                                        random_state=42)
 
+    with open(PATH_XGB_ANALYSIS / 'ana2_explainer_concept.pkl', 'wb') as f:
+        explainer_concept.dump(f)
+
     with open(PATH_XGB_ANALYSIS / 'ana2_importance_concept.pkl', 'wb') as f:
         pickle.dump(importance_concept, f)
 
 else:
+
+    with open(PATH_XGB_ANALYSIS / 'ana2_explainer_concept.pkl', 'rb') as f:
+        explainer_concept = pickle.load(f)
 
     with open(PATH_XGB_ANALYSIS / 'ana2_importance_concept.pkl', 'rb') as f:
         importance_concept = pickle.load(f)
@@ -513,6 +547,8 @@ if RUN_FEATURE_GROUP_IMP_REP:
                                                       processes=1,
                                                       random_state=42)
 
+    with open(PATH_XGB_ANALYSIS / 'ana3_explainer_rep.pkl', 'wb') as f:
+        explainer_rep.dump(f)
 
     with open(PATH_XGB_ANALYSIS / 'ana3_importance_rep_diag_sep.pkl', 'wb') as f:
         pickle.dump(importance_diag_sep, f)
@@ -527,6 +563,9 @@ if RUN_FEATURE_GROUP_IMP_REP:
         pickle.dump(importance_clin_joint, f)
 
 else:
+
+    with open(PATH_XGB_ANALYSIS / 'ana3_explainer_rep.pkl', 'rb') as f:
+        explainer_rep = pickle.load(f)
 
     with open(PATH_XGB_ANALYSIS / 'ana3_importance_rep_diag_sep.pkl', 'rb') as f:
         importance_diag_sep = pickle.load(f)
@@ -546,7 +585,8 @@ importance_diag_joint.plot(show=False).show(renderer='browser')
 importance_clin_sep.plot(show=False).show(renderer='browser')
 importance_clin_joint.plot(show=False).show(renderer='browser')
 
-# 4. Behaviour Analysis -------------------------------------------------------------------------------------------
+
+# 4. SHAP Behavior Analysis -------------------------------------------------------------------------------------------
 
 def aggregate_shap_groups(shap_values,
                           feature_names,
@@ -563,10 +603,11 @@ def aggregate_shap_groups(shap_values,
 
 if RUN_SHAP_IMPORTANCE:
 
-    # # Importance heatmap
+    # ----- Importance heatmap
+
     DICT_SHAP_EXPLAINER = {k: shap.TreeExplainer(v) for k, v in DICT_MODEL_OUTPUT.items() if k != 'm0'}
     DICT_SHAP_EXPLAINER_COLS = {k: v.feature_names_in_ for k, v in DICT_MODEL_OUTPUT.items() if k != 'm0'}
-    DICT_SHAP_VALUES = {k: v(X_val[DICT_MODEL_OUTPUT[k].feature_names_in_]) for k, v in DICT_SHAP_EXPLAINER.items()}
+    DICT_SHAP_VALUES = {k: v(X_val[DICT_MODEL_OUTPUT[k].feature_names_in_.tolist()]) for k, v in DICT_SHAP_EXPLAINER.items()}
     for k, v in DICT_SHAP_VALUES.items():
         v.feature_names = ['__'.join(c.split('__')[1:]) if len(c.split('__')) > 1 else c for c in v.feature_names]
 
@@ -578,18 +619,18 @@ if RUN_SHAP_IMPORTANCE:
     df_shap_all = pd.concat(ls_shap, axis=1).sort_values('m9', ascending=False)
     df_shap_all.to_csv(PATH_XGB_ANALYSIS / 'ana4_shap_feature_importance.csv')
 
-    with open(PATH_XGB_ANALYSIS / "ana4_shap_values.pkl", "wb") as f:
+    with open(PATH_XGB_ANALYSIS / 'ana4_shap_values.pkl', 'wb') as f:
         pickle.dump(DICT_SHAP_VALUES, f)
 
 else:
 
-    with open(PATH_XGB_ANALYSIS / "ana4_shap_values.pkl", "rb") as f:
+    with open(PATH_XGB_ANALYSIS / 'ana4_shap_values.pkl', 'rb') as f:
         DICT_SHAP_VALUES = pickle.load(f)
 
     df_shap_all = pd.read_csv(PATH_XGB_ANALYSIS / 'ana4_shap_feature_importance.csv', index_col=0)
 
 
-# Create beeswarm plot
+    # ----- Create beeswarm plot
 shap_values = DICT_SHAP_VALUES['m9']
 shap.plots.beeswarm(
     shap_values,
@@ -597,43 +638,131 @@ shap.plots.beeswarm(
     group_remaining_features=False,
 )
 
-# Define feature groups
-feature_groups_concept_adj = deepcopy(feature_groups_concept)
-for k, v in feature_groups_concept_adj.items():
-    feature_groups_concept_adj[k] = ['__'.join(c.split('__')[1:]) if len(c.split('__')) > 1 else c for c in v]
+if RUN_SHAP_GROUP:
 
-# Get feature concept shap
-df_shap_concept = aggregate_shap_groups(shap_values, shap_values.feature_names, feature_groups_concept_adj)
-# df_shap_concept.to_csv(PATH_XGB_ANALYSIS / 'ana4_shap_concept.csv', index=False)
+    # ----- Feature concept groups
 
-# Get mean feature concept shap
-df_shap_concept_mean = df_shap_concept.mean().sort_values(ascending=False).reset_index()
-df_shap_concept_mean.columns = ['concept', 'mean_shap']
-# df_shap_concept_mean.to_csv(PATH_XGB_ANALYSIS / 'ana4_shap_concept_mean.csv', index=False)
+    # Define feature groups
+    feature_groups_concept_adj = deepcopy(feature_groups_concept)
+    for k, v in feature_groups_concept_adj.items():
+        feature_groups_concept_adj[k] = ['__'.join(c.split('__')[1:]) if len(c.split('__')) > 1 else c for c in v]
 
-# Get mean abs feature concept shap
-df_shap_concept_mean_abs = df_shap_concept.abs().mean().sort_values(ascending=False).reset_index()
-df_shap_concept_mean_abs.columns = ['concept', 'mean_shap']
-# df_shap_concept_mean_abs.to_csv(PATH_XGB_ANALYSIS / 'ana4_shap_concept_mean_abs.csv', index=False)
+    # Get feature concept shap
+    df_shap_concept = aggregate_shap_groups(shap_values, shap_values.feature_names, feature_groups_concept_adj)
+    df_shap_concept.to_csv(PATH_XGB_ANALYSIS / 'ana4_shap_concept.csv', index=False)
 
-# TODO: te
+    # Get mean feature concept shap
+    df_shap_concept_mean = df_shap_concept.mean().sort_values(ascending=False).reset_index()
+    df_shap_concept_mean.columns = ['concept', 'mean_shap']
+    df_shap_concept_mean.to_csv(PATH_XGB_ANALYSIS / 'ana4_shap_concept_mean.csv', index=False)
+
+    # Get mean abs feature concept shap
+    df_shap_concept_mean_abs = df_shap_concept.abs().mean().sort_values(ascending=False).reset_index()
+    df_shap_concept_mean_abs.columns = ['concept', 'mean_shap']
+    df_shap_concept_mean_abs.to_csv(PATH_XGB_ANALYSIS / 'ana4_shap_concept_mean_abs.csv', index=False)
+
+    # ----- Feature model groups
+
+    feature_groups_model = {
+        'numerical': num_cols,
+        'demographics': dem_cols,
+        'clinical_group': clin_cols,
+        'clinical_te': clin_te_cols,
+        'diagnosis_group': diag_cols,
+        'diagnosis_te': diag_te_cols,
+        'medication_group': druggrp_cols,
+        'medication': drug_cols,
+        'other': other_cols,
+    }
+
+    # Define feature groups
+    feature_groups_model_adj = deepcopy(feature_groups_model)
+    for k, v in feature_groups_model_adj.items():
+        feature_groups_model_adj[k] = ['__'.join(c.split('__')[1:]) if len(c.split('__')) > 1 else c for c in v]
+
+    # Get feature concept shap
+    df_shap_model = aggregate_shap_groups(shap_values, shap_values.feature_names, feature_groups_model_adj)
+    df_shap_model.to_csv(PATH_XGB_ANALYSIS / 'ana4_shap_model.csv', index=False)
+
+    # Get mean feature concept shap
+    df_shap_model_mean = df_shap_model.mean().sort_values(ascending=False).reset_index()
+    df_shap_model_mean.columns = ['group', 'mean_shap']
+    df_shap_model_mean.to_csv(PATH_XGB_ANALYSIS / 'ana4_shap_model_mean.csv', index=False)
+
+    # Get mean abs feature concept shap
+    df_shap_model_mean_abs = df_shap_model.abs().mean().sort_values(ascending=False).reset_index()
+    df_shap_model_mean_abs.columns = ['group', 'mean_shap']
+    df_shap_model_mean_abs.to_csv(PATH_XGB_ANALYSIS / 'ana4_shap_model_mean_abs.csv', index=False)
+
+else:
+    df_shap_concept_mean_abs = pd.read_csv(PATH_XGB_ANALYSIS / 'ana4_shap_concept_mean_abs.csv')
+    df_shap_concept_mean = pd.read_csv(PATH_XGB_ANALYSIS / 'ana4_shap_concept_mean.csv')
+    df_shap_concept = pd.read_csv(PATH_XGB_ANALYSIS / 'ana4_shap_concept.csv')
+    df_shap_model = pd.read_csv(PATH_XGB_ANALYSIS / 'ana4_shap_model.csv')
+    df_shap_model_mean = pd.read_csv(PATH_XGB_ANALYSIS / 'ana4_shap_model_mean.csv')
+    df_shap_model_mean_abs = pd.read_csv(PATH_XGB_ANALYSIS / 'ana4_shap_model_mean_abs.csv')
+
+
+# 5. Subgroup Dependency Analysis -------------------------------------------------------------------------------------------
 
 # Dependency plot
-if False:
-    shap.plots.scatter(shap_values[:, 'diag_1'])
-    shap.plots.scatter(shap_values[:, 'diag_2'])
-    shap.plots.scatter(shap_values[:, 'diag_3'])
-    shap.plots.scatter(shap_values[:, 'payer_code'])
-    shap.plots.scatter(shap_values[:, 'medical_specialty'])
-    shap.plots.scatter(shap_values[:, 'age'])
-    shap.plots.scatter(shap_values[:, 'weight'])
-    shap.plots.scatter(shap_values[:, 'race'])
-    shap.plots.scatter(shap_values[:, 'gender'])
+if RUN_SHAP_DEPENDENCY:
+    shap.plots.scatter(shap_values[:, ['diag_1', 'diag_2', 'diag_3']])
+    shap.plots.scatter(shap_values[:, ['diag_1_te', 'diag_2_te', 'diag_3_te']])
+    shap.plots.scatter(shap_values[:, ['payer_code', 'weight']])
+    shap.plots.scatter(shap_values[:, ['medical_specialty', 'admission_source_id', 'admission_type_id', 'discharge_disposition_id', 'A1Cresult', 'max_glu_serum']])
+    shap.plots.scatter(shap_values[:, ['medical_specialty_te', 'admission_source_id_te', 'admission_type_id_te', 'discharge_disposition_id_te']])
+    shap.plots.scatter(shap_values[:, ['age', 'race', 'gender']])
 
 
-# Subgroup Prediction Analysis -------------------------------------------------------------------------------------------
-# Error Analysis -------------------------------------------------------------------------------------------
-# Interaction Analysis -------------------------------------------------------------------------------------------
+# 6. Error Analysis -------------------------------------------------------------------------------------------
+
+# 7. Interaction Analysis -------------------------------------------------------------------------------------------
+
+if RUN_SHAP_INTERACTION:
+
+    model = DICT_MODEL_OUTPUT['m9']
+    X_sample = X_val.loc[:, model.feature_names_in_].sample(5000, random_state=42)
+    dmatrix = xgboost.DMatrix(X_sample, enable_categorical=True)
+    shap_interaction = model.get_booster().predict(dmatrix, pred_interactions=True)
+    shap_interaction_features = shap_interaction[:, :-1, :-1]
+
+    # Calculate SHAP interactions
+    features = list(model.feature_names_in_)
+    mat_interaction = np.zeros((len(features), len(features)))
+    for c1 in DICT_MODEL_OUTPUT['m9'].feature_names_in_:
+        for c2 in DICT_MODEL_OUTPUT['m9'].feature_names_in_:
+            i = features.index(c1)
+            j = features.index(c2)
+            mat_interaction[i][j] = np.abs(shap_interaction_features[:, i, j]).mean()
+
+    # SHAP interaction (mean abs main effect + pairwise interaction effect)
+    df_interaction = pd.DataFrame(mat_interaction, index=features, columns=features)
+    df_interaction.index = ['__'.join(c.split('__')[1:]) if len(c.split('__')) > 1 else c for c in df_interaction.index]
+    df_interaction.columns = ['__'.join(c.split('__')[1:]) if len(c.split('__')) > 1 else c for c in df_interaction.columns]
+
+    # Feature interaction importance
+    diag = np.diag(mat_interaction)
+    interaction_importance = diag + 0.5 * (mat_interaction.sum(axis=1) - diag)
+    df_interaction_imp = pd.DataFrame(interaction_importance, index=features, columns=['importance']).sort_values(by='importance', ascending=False)
+    df_interaction_imp.index = ['__'.join(c.split('__')[1:]) if len(c.split('__')) > 1 else c for c in df_interaction_imp.index]
+
+    with open(PATH_XGB_ANALYSIS / 'ana7_shap_interaction.pkl', 'wb') as f:
+        pickle.dump(shap_interaction_features, f)
+
+    df_interaction.to_csv(PATH_XGB_ANALYSIS / 'ana7_shap_interaction_df.csv')
+    
+    df_interaction_imp.to_csv(PATH_XGB_ANALYSIS / 'ana7_shap_interaction_imp_df.csv')
+    
+else:
+    with open(PATH_XGB_ANALYSIS / 'ana7_shap_interaction.pkl', 'rb') as f:
+        shap_interaction_features = pickle.load(f)
+
+    df_interaction = pd.read_csv(PATH_XGB_ANALYSIS / 'ana7_shap_interaction_df.csv', index_col=0)
+
+    df_interaction_imp = pd.read_csv(PATH_XGB_ANALYSIS / 'ana7_shap_interaction_imp_df.csv', index_col=0)
+
+
+
 # Subgroup Fairness Analysis -------------------------------------------------------------------------------------------
 # Individual Explanation -------------------------------------------------------------------------------------------
-

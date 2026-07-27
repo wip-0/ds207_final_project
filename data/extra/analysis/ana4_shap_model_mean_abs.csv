@@ -1,0 +1,10 @@
+group,mean_shap
+numerical,0.4077754
+diagnosis_te,0.1923759
+clinical_te,0.1172352
+other,0.084033884
+clinical_group,0.07729515
+diagnosis_group,0.071404
+demographics,0.0692558
+medication,0.044384256
+medication_group,0.03330529

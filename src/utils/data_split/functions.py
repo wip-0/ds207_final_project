@@ -237,8 +237,8 @@ def split_data_by_patient_stratified(
     # First split: Create test set (20% of data) using stratified group k-fold
     # This ensures patients are not split across train/validation and test sets
     # and maintains class distribution in both splits
-    sgkf_test = StratifiedGroupKFold(n_splits=5, shuffle=True,
-                                     random_state=random_state)
+    sgkf_test = StratifiedGroupKFold(n_splits= 5, shuffle= True,
+                                     random_state= random_state)
     train_val_idx, test_idx = next(sgkf_test.split(df, y, groups))
 
     # Create the combined train/validation dataframe and the separate test dataframe
@@ -247,8 +247,8 @@ def split_data_by_patient_stratified(
 
     # Second split: Further split the train/validation data into separate train and validation sets
     # Using 4 splits means validation will be approximately 25% of the train/validation pool
-    sgkf_val = StratifiedGroupKFold(n_splits=4,shuffle=True,
-                                    random_state=random_state)
+    sgkf_val = StratifiedGroupKFold(n_splits= 4, shuffle= True,
+                                    random_state= random_state)
 
     # Extract indices for the final training and validation sets
     train_idx, val_idx = next(sgkf_val.split(

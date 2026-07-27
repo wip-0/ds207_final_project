@@ -1,0 +1,15 @@
+{
+  "batch_size": 512,
+  "positive_class_weight": 1.05,
+  "n_conv_layers": 3,
+  "filters_l1": 128,
+  "filters_l2": 128,
+  "filters_l3": 16,
+  "embedding_dim": 5,
+  "kernel_size": 5,
+  "dense_units": 32,
+  "kernel_regularizer": 1.1492088621644149e-07,
+  "learning_rate": 0.0016661662354081426,
+  "dropout_rate": 0.35000000000000003,
+  "LeakyReLU_alpha": 0.05
+}

@@ -713,6 +713,7 @@ if RUN_SHAP_DEPENDENCY:
     shap.plots.scatter(shap_values[:, ['medical_specialty', 'admission_source_id', 'admission_type_id', 'discharge_disposition_id', 'A1Cresult', 'max_glu_serum']])
     shap.plots.scatter(shap_values[:, ['medical_specialty_te', 'admission_source_id_te', 'admission_type_id_te', 'discharge_disposition_id_te']])
     shap.plots.scatter(shap_values[:, ['age', 'race', 'gender']])
+    shap.plots.scatter(shap_values[:, ['__'.join(c.split('__')[1:]) if len(c.split('__')) > 1 else c for c in druggrp_cols]])
 
 
 # 6. Error Analysis -------------------------------------------------------------------------------------------

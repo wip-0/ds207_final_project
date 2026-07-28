@@ -1,0 +1,15 @@
+{
+  "batch_size": 512,
+  "positive_class_weight": 1.15,
+  "n_dense_layers": 1,
+  "units_l1": 64,
+  "embedding_dim": 2,
+  "kernel_regularizer": 6.442003447880193e-06,
+  "learning_rate": 0.0021160456247795263,
+  "dropout_rate": 0.25,
+  "LeakyReLU_alpha": 0.1,
+  "use_cross_attention": true,
+  "attention_dim": 8,
+  "num_attention_heads": 4,
+  "attention_dropout": 0.15000000000000002
+}

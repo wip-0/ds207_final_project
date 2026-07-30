@@ -22,6 +22,7 @@ from src.stats import compare_adjacent_models
 from src.utils.model_eval.evaluation import evaluate_predictions
 from src.visualisations.viz_model import plot_confusion_matrix
 
+import seaborn as sns
 
 # Settings -------------------------------------------------------------------------------------------
 
@@ -265,6 +266,7 @@ DICT_ADDED_FEATURES['m7'] = 'Clinical (Raw, Target Encoded)'
 DICT_ADDED_FEATURES['m8'] = 'Diagnosis (Raw, Target Encoded)'
 DICT_ADDED_FEATURES['m9'] = 'Payer Code & Weight (Raw)'
 
+RUN_ONEHOT_IMP = False
 RUN_PREDICTIVE_CONTRI = False
 RUN_FEATURE_GROUP_IMP_CONCEPT = False
 RUN_FEATURE_GROUP_IMP_REP = False
@@ -272,6 +274,69 @@ RUN_SHAP_IMPORTANCE = False
 RUN_SHAP_GROUP = False
 RUN_SHAP_INTERACTION = False
 RUN_SHAP_DEPENDENCY = False
+RUN_RESIDUAL_ANA = False
+
+# 0. Loss Importance (One-Hot vs Label) -------------------------------------------------------------------------------------------
+
+ls_col_raw = num_cols + dem_cols + clin_cols + diag_cols + druggrp_cols + drug_cols
+ls_col_oh = [c.replace('_raw', '') for c in ls_col_raw]
+
+model_oh = DICT_MODEL_OUTPUT['m0']
+model_raw = DICT_MODEL_OUTPUT['m6']
+
+if RUN_ONEHOT_IMP:
+    
+    # Get One-Hot feature importance
+    dict_imp_oh = {
+        'gain': model_oh.get_booster().get_score(importance_type='gain'),
+        'total_gain': model_oh.get_booster().get_score(importance_type='total_gain'),
+        'weight': model_oh.get_booster().get_score(importance_type='weight'),
+        'cover': model_oh.get_booster().get_score(importance_type='cover'),
+        'total_cover': model_oh.get_booster().get_score(importance_type='total_cover'),
+    }
+    df_imp_oh = pd.concat([pd.DataFrame(v, index=[k]).T for k, v in dict_imp_oh.items()], axis=1).sort_values('total_gain', ascending=False)
+    df_imp_oh.index = [idx.replace('_onehot', '') for idx in df_imp_oh.index]
+    dict_imp_oh_count = dict()
+    for c in ls_col_oh:
+        dict_imp_oh_count[c] = 0.
+    for c in ls_col_oh:     # Drug group first then drug to avoid mismatch
+        dict_imp_oh_count[c] = df_imp_oh.loc[[c in idx for idx in df_imp_oh.index]]['total_gain'].sum()
+    df_imp_oh_count = pd.DataFrame(dict_imp_oh_count, index=[0]).T
+    df_imp_oh_count[0] = df_imp_oh_count[0] / df_imp_oh_count[0].sum()
+    df_imp_oh_count.index = ['__'.join(c.split('__')[1:]) if len(c.split('__')) > 1 else c for c in df_imp_oh_count.index]
+    df_imp_oh_count = df_imp_oh_count.reset_index(drop=False)
+    df_imp_oh_count.columns = ['feature', 'importance (%)']
+    df_imp_oh_count['model'] = 'One-Hot (M0)'
+    df_imp_oh_count.sort_values('importance (%)', ascending=False, inplace=True)
+    
+    # Get label feature importance
+    dict_imp_raw = {
+        'gain': model_raw.get_booster().get_score(importance_type='gain'),
+        'total_gain': model_raw.get_booster().get_score(importance_type='total_gain'),
+        'weight': model_raw.get_booster().get_score(importance_type='weight'),
+        'cover': model_raw.get_booster().get_score(importance_type='cover'),
+        'total_cover': model_raw.get_booster().get_score(importance_type='total_cover'),
+    }
+    df_imp_raw = pd.concat([pd.DataFrame(v, index=[k]).T for k, v in dict_imp_raw.items()], axis=1).sort_values('total_gain', ascending=False)
+    df_imp_raw_count = df_imp_raw.reindex(index=ls_col_raw, fill_value=0)[['total_gain']]
+    df_imp_raw_count['total_gain'] = df_imp_raw_count['total_gain'] / df_imp_raw_count['total_gain'].sum()
+    df_imp_raw_count.index = ['__'.join(c.split('__')[1:]) if len(c.split('__')) > 1 else c for c in df_imp_raw_count.index]
+    df_imp_raw_count = df_imp_raw_count.reset_index(drop=False)
+    df_imp_raw_count.columns = ['feature', 'importance (%)']
+    df_imp_raw_count['model'] = 'Label (M6)'
+    df_imp_raw_count.sort_values('importance (%)', ascending=False, inplace=True)
+    
+    df_imp_all = pd.concat([df_imp_oh_count, df_imp_raw_count], axis=0, ignore_index=True)
+    ax = sns.barplot(df_imp_all, x='feature', y='importance (%)', hue='model')
+    ax.set_title('XGBoost Feature Importance (%) - One-Hot vs Label Encoded Data')
+    plt.xticks(rotation=90)
+    plt.tight_layout()
+    plt.show()
+
+    df_imp_all.to_csv(PATH_XGB_ANALYSIS / 'ana0_onehot_label_imp.csv', index=False)
+
+else:
+    df_imp_all = pd.read_csv(PATH_XGB_ANALYSIS / 'ana0_onehot_label_imp.csv')
 
 # 1. Predictive Contribution -------------------------------------------------------------------------------------------
 
@@ -348,6 +413,18 @@ else:
     df_perf_val = pd.read_csv(PATH_XGB_ANALYSIS / 'ana1_perf_contri_val.csv', index_col=0)
     df_prauc = pd.read_csv(PATH_XGB_ANALYSIS / 'ana1_perf_contri_prauc.csv', index_col=0)
 
+print('Performance Assessment (Training Data)')
+print(df_perf_train)
+print('\n')
+
+print('Performance Assessment (Validation Data)')
+print(df_perf_val)
+print('\n')
+
+print('PR-AUC Bootstrapping Analysis (Validation Data)')
+print(df_prauc)
+print('\n')
+
 
 # 2. Concept (Feature Group) Importance -------------------------------------------------------------------------------------------
 
@@ -373,13 +450,17 @@ group_hosp_util = [
     'pipeline_standard__num_medications',
     'pipeline_standard__number_diagnoses'
 ]
-group_clin = [
+group_clin_assess = [
     'pipeline_raw__max_glu_serum',
     'pipeline_raw__A1Cresult',
+]
+group_clin_ops = [
     'pipeline_admission_type_raw__admission_type_id',
     'pipeline_discharge_raw__discharge_disposition_id',
     'pipeline_admission_src_raw__admission_source_id',
     'pipeline_medical_raw__medical_specialty',
+]
+group_clin_te = [
     'medical_specialty_te',
     'admission_source_id_te',
     'admission_type_id_te',
@@ -389,23 +470,29 @@ group_diag = [
     "pipeline_icd9_raw__diag_1",
     "pipeline_icd9_raw__diag_2",
     "pipeline_icd9_raw__diag_3",
+]
+group_diag_te = [
     "diag_1_te",
     "diag_2_te",
     "diag_3_te",
 ]
-group_med = [
+group_med_change = [
+    "pipeline_prescript_raw__sulfonylureas__change",
+    "pipeline_prescript_raw__tzds__change",
+    "pipeline_prescript_raw__meglitinides__change",
+    "pipeline_prescript_raw__alpha_glucosidase__change",
+    "pipeline_prescript_raw__metformin__change",
+    "pipeline_prescript_raw__insulin__change",
+]
+group_med_prescribed = [
     'pipeline_prescript_raw__sulfonylureas__prescribed',
-    'pipeline_prescript_raw__sulfonylureas__change',
     'pipeline_prescript_raw__tzds__prescribed',
-    'pipeline_prescript_raw__tzds__change',
     'pipeline_prescript_raw__meglitinides__prescribed',
-    'pipeline_prescript_raw__meglitinides__change',
     'pipeline_prescript_raw__alpha_glucosidase__prescribed',
-    'pipeline_prescript_raw__alpha_glucosidase__change',
     'pipeline_prescript_raw__metformin__prescribed',
-    'pipeline_prescript_raw__metformin__change',
     'pipeline_prescript_raw__insulin__prescribed',
-    'pipeline_prescript_raw__insulin__change',
+]
+group_med_raw = [
     'pipeline_prescript_raw__metformin',
     'pipeline_prescript_raw__repaglinide',
     'pipeline_prescript_raw__nateglinide',
@@ -430,13 +517,31 @@ group_med = [
 ]
 
 feature_groups_concept = {
-    'visit': group_visit,
-    'demographics': dem_cols,
-    'hospital_util': group_hosp_util,
-    'clinical': group_clin,
-    'diagnosis': group_diag,
-    'medication': group_med,
-    'other': other_cols,
+    'Hospital Visit [Raw]': group_visit,
+    'Demographics [Raw]': dem_cols,
+    'Utilization [Raw]': group_hosp_util,
+    'Clinical (Operation)[Grouped]': group_clin_ops,
+    'Clinical (Assessment)[Raw]': group_clin_assess,
+    'Clinical (Target-Encoded)[Raw]': group_clin_te,
+    'Diagnosis [Grouped]': group_diag,
+    'Diagnosis (Target-Encoded)[Raw]': group_diag_te,
+    'Medication [Raw]': group_med_raw,
+    'Medication (Distinct Count)[Grouped]': group_med_prescribed,
+    'Medication (Change Count)[Grouped]': group_med_change,
+    'Other (Payer Code)[Raw]': ['payer_code'],
+    'Other (Weight)[Raw]': ['weight'],
+}
+
+feature_groups_origin = {
+    'Numerical': num_cols,
+    'Demographics': dem_cols,
+    'Clinical': clin_cols,
+    'Clinical (Target-Encoded)': clin_te_cols,
+    'Diagnosis': diag_cols,
+    'Diagnosis (Target-Encoded)': diag_te_cols,
+    'Medication': drug_cols,
+    'Medication (Grouped Count)': druggrp_cols,
+    'Other': other_cols,
 }
 
 # Run feature concept importance
@@ -455,12 +560,22 @@ if RUN_FEATURE_GROUP_IMP_CONCEPT:
                                                        B=100,        # num of permutation
                                                        processes=1,
                                                        random_state=42)
+    importance_origin = explainer_concept.model_parts(variable_groups=feature_groups_origin,
+                                                       loss_function=negative_prauc,
+                                                       type='difference',
+                                                       N=None,
+                                                       B=100,        # num of permutation
+                                                       processes=1,
+                                                       random_state=42)
 
     with open(PATH_XGB_ANALYSIS / 'ana2_explainer_concept.pkl', 'wb') as f:
         explainer_concept.dump(f)
 
     with open(PATH_XGB_ANALYSIS / 'ana2_importance_concept.pkl', 'wb') as f:
         pickle.dump(importance_concept, f)
+
+    with open(PATH_XGB_ANALYSIS / 'ana2_importance_origin.pkl', 'wb') as f:
+        pickle.dump(importance_origin, f)
 
 else:
 
@@ -470,12 +585,31 @@ else:
     with open(PATH_XGB_ANALYSIS / 'ana2_importance_concept.pkl', 'rb') as f:
         importance_concept = pickle.load(f)
 
+    with open(PATH_XGB_ANALYSIS / 'ana2_importance_origin.pkl', 'rb') as f:
+        importance_origin = pickle.load(f)
+
 # Plot importance
-importance_concept.plot(show=False).show(renderer='browser')
+importance_concept.plot(show=True)#.show(renderer='browser')
+importance_origin.plot(show=True)#.show(renderer='browser')
 
 
 # 3. Representation Analysis -------------------------------------------------------------------------------------------
 
+feature_groups_drug_sep_raw_dist = {
+    'medication': drug_cols,
+    'medication_distinct_count': group_med_prescribed,
+}
+feature_groups_drug_sep_raw_chg = {
+    'medication': drug_cols,
+    'medication_change_count': group_med_change,
+}
+feature_groups_drug_sep_dist_chg = {
+    'medication_distinct_count': group_med_prescribed,
+    'medication_change_count': group_med_change,
+}
+feature_groups_drug_joint = {
+    'medication_joint': drug_cols + group_med_prescribed + group_med_change
+}
 feature_groups_diag_sep = {
     'diagnosis_grouped': diag_cols,
     'diagnosis_te': diag_te_cols
@@ -547,6 +681,52 @@ if RUN_FEATURE_GROUP_IMP_REP:
                                                       processes=1,
                                                       random_state=42)
 
+    print('Running Importance: Medication (Separated (Raw vs Distinct)')
+    importance_drug_sep_raw_dist = explainer_rep.model_parts(variable_groups=feature_groups_drug_sep_raw_dist,
+                                                    loss_function=negative_prauc,
+                                                    type='difference',
+                                                    N=None,
+                                                    B=100,
+                                                    processes=1,
+                                                    random_state=42)
+
+    print('Running Importance: Medication (Separated (Raw vs Change)')
+    importance_drug_sep_raw_chg = explainer_rep.model_parts(variable_groups=feature_groups_drug_sep_raw_chg,
+                                                    loss_function=negative_prauc,
+                                                    type='difference',
+                                                    N=None,
+                                                    B=100,
+                                                    processes=1,
+                                                    random_state=42)
+
+    print('Running Importance: Medication (Separated (Distinct vs Change)')
+    importance_drug_sep_dist_chg = explainer_rep.model_parts(variable_groups=feature_groups_drug_sep_dist_chg,
+                                                    loss_function=negative_prauc,
+                                                    type='difference',
+                                                    N=None,
+                                                    B=100,
+                                                    processes=1,
+                                                    random_state=42)
+
+    print('Running Importance: Medication (Joint)')
+    importance_drug_joint = explainer_rep.model_parts(variable_groups=feature_groups_drug_joint,
+                                                      loss_function=negative_prauc,
+                                                      type='difference',
+                                                      N=None,
+                                                      B=100,
+                                                      processes=1,
+                                                      random_state=42)
+
+    # Plot importance
+    importance_diag_sep.plot(show=False).show(renderer="browser")
+    importance_diag_joint.plot(show=False).show(renderer="browser")
+    importance_clin_sep.plot(show=False).show(renderer="browser")
+    importance_clin_joint.plot(show=False).show(renderer="browser")
+    importance_drug_sep_raw_dist.plot(show=False).show(renderer="browser")
+    importance_drug_sep_raw_chg.plot(show=False).show(renderer="browser")
+    importance_drug_sep_dist_chg.plot(show=False).show(renderer="browser")
+    importance_drug_joint.plot(show=False).show(renderer="browser")
+
     with open(PATH_XGB_ANALYSIS / 'ana3_explainer_rep.pkl', 'wb') as f:
         explainer_rep.dump(f)
 
@@ -561,6 +741,18 @@ if RUN_FEATURE_GROUP_IMP_REP:
 
     with open(PATH_XGB_ANALYSIS / 'ana3_importance_rep_clin_joint.pkl', 'wb') as f:
         pickle.dump(importance_clin_joint, f)
+
+    with open(PATH_XGB_ANALYSIS / 'ana3_importance_rep_drug_sep_raw_dist.pkl', 'wb') as f:
+        pickle.dump(importance_drug_sep_raw_dist, f)
+
+    with open(PATH_XGB_ANALYSIS / 'ana3_importance_rep_drug_sep_raw_chg.pkl', 'wb') as f:
+        pickle.dump(importance_drug_sep_raw_chg, f)
+
+    with open(PATH_XGB_ANALYSIS / 'ana3_importance_rep_drug_sep_dist_chg.pkl', 'wb') as f:
+        pickle.dump(importance_drug_sep_dist_chg, f)
+
+    with open(PATH_XGB_ANALYSIS / 'ana3_importance_rep_drug_joint.pkl', 'wb') as f:
+        pickle.dump(importance_drug_joint, f)
 
 else:
 
@@ -579,11 +771,17 @@ else:
     with open(PATH_XGB_ANALYSIS / 'ana3_importance_rep_clin_joint.pkl', 'rb') as f:
         importance_clin_joint = pickle.load(f)
 
-# Plot importance
-importance_diag_sep.plot(show=False).show(renderer='browser')
-importance_diag_joint.plot(show=False).show(renderer='browser')
-importance_clin_sep.plot(show=False).show(renderer='browser')
-importance_clin_joint.plot(show=False).show(renderer='browser')
+    with open(PATH_XGB_ANALYSIS / 'ana3_importance_rep_drug_sep_raw_dist.pkl', 'rb') as f:
+        importance_drug_sep_raw_dist = pickle.load(f)
+
+    with open(PATH_XGB_ANALYSIS / 'ana3_importance_rep_drug_sep_raw_chg.pkl', 'rb') as f:
+        importance_drug_sep_raw_chg = pickle.load(f)
+
+    with open(PATH_XGB_ANALYSIS / 'ana3_importance_rep_drug_sep_dist_chg.pkl', 'rb') as f:
+        importance_drug_sep_dist_chg = pickle.load(f)
+
+    with open(PATH_XGB_ANALYSIS / 'ana3_importance_rep_drug_joint.pkl', 'rb') as f:
+        importance_drug_joint = pickle.load(f)
 
 
 # 4. SHAP Behavior Analysis -------------------------------------------------------------------------------------------
@@ -622,6 +820,17 @@ if RUN_SHAP_IMPORTANCE:
     with open(PATH_XGB_ANALYSIS / 'ana4_shap_values.pkl', 'wb') as f:
         pickle.dump(DICT_SHAP_VALUES, f)
 
+    # ----- Create beeswarm plot
+    shap_values = DICT_SHAP_VALUES['m9']
+    shap.plots.beeswarm(
+        shap_values,
+        max_display=34,   # selected based on >= 0.01
+        group_remaining_features=True,
+    )
+    plt.title('SHAP Feature Importance')
+    plt.tight_layout()
+    plt.show()
+
 else:
 
     with open(PATH_XGB_ANALYSIS / 'ana4_shap_values.pkl', 'rb') as f:
@@ -629,14 +838,6 @@ else:
 
     df_shap_all = pd.read_csv(PATH_XGB_ANALYSIS / 'ana4_shap_feature_importance.csv', index_col=0)
 
-
-    # ----- Create beeswarm plot
-shap_values = DICT_SHAP_VALUES['m9']
-shap.plots.beeswarm(
-    shap_values,
-    max_display=34,   # selected based on >= 0.01
-    group_remaining_features=False,
-)
 
 if RUN_SHAP_GROUP:
 
@@ -708,15 +909,119 @@ else:
 # Dependency plot
 if RUN_SHAP_DEPENDENCY:
     shap.plots.scatter(shap_values[:, ['diag_1', 'diag_2', 'diag_3']])
+    plt.title('SHAP Dependence Plot (Diagnosis - Grouped)')
+    plt.tight_layout()
+    plt.show()
+
     shap.plots.scatter(shap_values[:, ['diag_1_te', 'diag_2_te', 'diag_3_te']])
+    plt.title('SHAP Dependence Plot (Diagnosis - Target-Encoded)')
+    plt.tight_layout()
+    plt.show()
+
     shap.plots.scatter(shap_values[:, ['payer_code', 'weight']])
+    plt.title('SHAP Dependence Plot (Other)')
+    plt.tight_layout()
+    plt.show()
+
     shap.plots.scatter(shap_values[:, ['medical_specialty', 'admission_source_id', 'admission_type_id', 'discharge_disposition_id', 'A1Cresult', 'max_glu_serum']])
+    plt.title('SHAP Dependence Plot (Clinical)')
+    plt.tight_layout()
+    plt.show()
+
     shap.plots.scatter(shap_values[:, ['medical_specialty_te', 'admission_source_id_te', 'admission_type_id_te', 'discharge_disposition_id_te']])
+    plt.title('SHAP Dependence Plot (Clinical, Target-Encoded)')
+    plt.tight_layout()
+    plt.show()
+
     shap.plots.scatter(shap_values[:, ['age', 'race', 'gender']])
-    shap.plots.scatter(shap_values[:, ['__'.join(c.split('__')[1:]) if len(c.split('__')) > 1 else c for c in druggrp_cols]])
+    plt.title('SHAP Dependence Plot (Demographics)')
+    plt.tight_layout()
+    plt.show()
+
+    shap.plots.scatter(shap_values[:, ['__'.join(c.split('__')[1:]) if len(c.split('__')) > 1 else c for c in druggrp_cols]], show=False)
+    for ax in plt.gcf().axes:
+        ax.xaxis.label.set_rotation(45)
+    plt.title('SHAP Dependence Plot (Medication (Grouped)')
+    plt.tight_layout()
+    plt.show()
 
 
-# 6. Error Analysis -------------------------------------------------------------------------------------------
+# 6. Residual Analysis -------------------------------------------------------------------------------------------
+
+if RUN_RESIDUAL_ANA:
+
+    # Get last model and data
+    k = "m9"
+    model = DICT_MODEL_OUTPUT[k]
+    x = X_val[model.feature_names_in_]
+
+    explainer_res = dx.Explainer(model, x, y_val, label=k, predict_function=predict_positive_prob, verbose=True)
+    resid_diag = explainer_res.model_diagnostics()
+
+    df_resid = resid_diag.result
+    df_resid.columns = ['__'.join(c.split('__')[1:]) if len(c.split('__')) > 1 else c for c in df_resid.columns]
+
+    df_resid.to_csv(PATH_XGB_ANALYSIS / 'ana6_df_resid.csv', index=False)
+
+    ax = sns.histplot(df_resid.result, x='residuals', bins=100)
+    ax.set_title('Histogram of Residuals (M9)')
+    plt.tight_layout()
+    plt.show()
+
+    # ----------- Demographics
+
+    ax = sns.histplot(df_resid, x='residuals', hue='age', bins=50, multiple='stack')
+    ax.set_title('Histogram of Residuals (M9) - By age')
+    plt.tight_layout()
+    plt.show()
+
+    ax = sns.histplot(df_resid, x='residuals', hue='race', bins=50, multiple='stack')
+    ax.set_title('Histogram of Residuals (M9) - By race')
+    plt.tight_layout()
+    plt.show()
+
+    ax = sns.histplot(df_resid, x='residuals', hue='gender', bins=50, multiple='stack')
+    ax.set_title('Histogram of Residuals (M9) - By gender')
+    plt.tight_layout()
+    plt.show()
+
+    # ----------- Clinical
+
+    ax = sns.histplot(df_resid, x='residuals', hue='medical_specialty', bins=50, multiple='stack')
+    ax.set_title('Histogram of Residuals (M9) - By medical_specialty')
+    plt.tight_layout()
+    plt.show()
+
+    # ----------- Diagnosis
+
+    ax = sns.histplot(df_resid, x='residuals', hue='diag_1', bins=50, multiple='stack')
+    ax.set_title('Histogram of Residuals (M9) - By diag_1')
+    plt.tight_layout()
+    plt.show()
+
+    df_resid[num_cols_raw] = X_val_interim[num_cols_raw]
+    ax = sns.histplot(df_resid, x='residuals', hue='number_inpatient', bins=50, multiple='stack')
+    ax.set_title('Histogram of Residuals (M9) - By number_inpatient')
+    plt.tight_layout()
+    plt.show()
+
+    ax = sns.scatterplot(df_resid, x='residuals', y='number_inpatient')
+    ax.set_title('Histogram of Residuals (M9) - By number_inpatient')
+    plt.tight_layout()
+    plt.show()
+
+else:
+
+    df_resid = pd.read_csv(PATH_XGB_ANALYSIS / 'ana6_df_resid.csv')
+
+
+dict_resid_stat = dict()
+for c in num_cols_raw + dem_cols + clin_cols + diag_cols + other_cols:
+    c = '__'.join(c.split('__')[1:]) if len(c.split('__')) > 1 else c
+    dict_resid_stat[c] = (df_resid[[c, 'y', 'residuals', 'abs_residuals']]
+                          .groupby([c, 'y'])
+                          .agg({'residuals': ['mean', 'median', 'count'], 'abs_residuals': 'mean'}))
+
 
 # 7. Interaction Analysis -------------------------------------------------------------------------------------------
 
@@ -748,6 +1053,9 @@ if RUN_SHAP_INTERACTION:
     df_interaction_imp = pd.DataFrame(interaction_importance, index=features, columns=['importance']).sort_values(by='importance', ascending=False)
     df_interaction_imp.index = ['__'.join(c.split('__')[1:]) if len(c.split('__')) > 1 else c for c in df_interaction_imp.index]
 
+    order = np.argsort(np.diag(df_interaction))[::-1]
+    df_interaction = df_interaction.iloc[order, order]
+
     with open(PATH_XGB_ANALYSIS / 'ana7_shap_interaction.pkl', 'wb') as f:
         pickle.dump(shap_interaction_features, f)
 
@@ -763,7 +1071,19 @@ else:
 
     df_interaction_imp = pd.read_csv(PATH_XGB_ANALYSIS / 'ana7_shap_interaction_imp_df.csv', index_col=0)
 
+plt.figure(figsize=(16, 8))
+ax = sns.barplot(df_interaction_imp.reset_index(), x='index', y='importance')
+ax.set_title('SHAP Feature Importance (Aggregated Mean Interaction)')
+plt.xticks(rotation=90)
+plt.tight_layout()
+plt.show()
 
-
-# Subgroup Fairness Analysis -------------------------------------------------------------------------------------------
-# Individual Explanation -------------------------------------------------------------------------------------------
+df_interaction_copy = df_interaction.copy()
+idx = np.diag(df_interaction) > 0.001
+df_interaction_copy = df_interaction_copy.loc[idx, idx]
+mask = np.triu(np.ones_like(df_interaction_copy, dtype=bool))
+df_interaction_copy = df_interaction_copy.mask(np.eye(df_interaction_copy.shape[0], dtype=bool))
+ax = sns.heatmap(df_interaction_copy, mask=mask, cmap='coolwarm')
+ax.set_title('SHAP Feature Importance Mean Interaction Heatmap')
+plt.tight_layout()
+plt.show()

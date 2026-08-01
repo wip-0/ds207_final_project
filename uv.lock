@@ -27,6 +27,14 @@ wheels = [
 ]
 
 [[package]]
+name = "aggdraw"
+version = "1.4.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/05/bf/4876fb82a906e9303392235e9fe382130b649c0ee4faa7fdb25596c26dff/aggdraw-1.4.1.tar.gz", hash = "sha256:e21d6b77afeeffa259b898d652295757fd35f15a9e11a24823c0d7ca63385c83", size = 263051, upload-time = "2025-12-03T16:33:17.818Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a4/9d/4f73105194f79cbd60e972eebcd7891cfa2b59ad61697bae62f025c2e016/aggdraw-1.4.1-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:ca9ddba3ac158bfddb60958a1901f0cc001dc54ce0ab456bb37a2ff8840fc3b8", size = 485351, upload-time = "2025-12-03T16:32:48.474Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/90/948386313d4b30d54baa17e1b0e6d09180cdaf2881422d8f80ab651b27c5/aggdraw-1.4.1-cp312-cp312-macosx_14_0_x86_64.whl", hash = "sha256:95952ff55f4ebec1f3ad56956e26765b87f94cf8cad22995bd35e8d3ef04f4a2", size = 520583, upload-time = "2025-12-03T16:32:50.083Z" },
+    { url = "https://files.pythonhosted.org/packages/44/1b/4169f561f88ee7c514673172f1c5625af62face5469bbd230a5d6453d068/aggdraw-1.4.1-cp312-cp312-win_amd64.whl", hash = "sha256:1d2be7c3acfc47866041886c849a1812ffe6bb95d9fc853eae1034ada86d8f32", size = 47358, upload-time = "2025-12-03T16:32:54.888Z" },
 name = "accelerate"
 version = "1.14.0"
 source = { registry = "https://pypi.org/simple" }
@@ -471,6 +479,7 @@ dependencies = [
     { name = "torch", version = "2.13.0", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'arm64' and sys_platform == 'darwin'" },
     { name = "tqdm", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
     { name = "transformers", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
+    { name = "visualkeras", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
     { name = "xgboost", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
 ]
 
@@ -516,6 +525,8 @@ requires-dist = [
     { name = "torch", marker = "platform_machine == 'AMD64' and sys_platform == 'win32'", specifier = ">=2.3,<3", index = "https://download.pytorch.org/whl/cu128" },
     { name = "tqdm", specifier = ">=4.67.3" },
     { name = "transformers", specifier = ">=5.12.1" },
+    { name = "visualkeras", specifier = ">=0.2.0" },
+    { name = "xgboost", specifier = ">=3.3.0" },
     { name = "xgboost", specifier = ">=3.0,<3.1" },
 ]
 
@@ -2539,6 +2550,18 @@ wheels = [
 ]
 
 [[package]]
+name = "visualkeras"
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aggdraw", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
+    { name = "pillow", marker = "(platform_machine == 'arm64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/51/59/97ef90bda0eec212b4d583a114f6e79d221bbc2077736f8a843234b9fd51/visualkeras-0.2.0.tar.gz", hash = "sha256:cbdcfc00f29484b199870e5895452d9414008692c796ab214e5e72d445e20917", size = 1032249, upload-time = "2025-10-14T00:52:53.391Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f7/1b/dbd60702ac130d5f0846b07ceefe0695069cdc9a71c22e62811b09b57a7f/visualkeras-0.2.0-py3-none-any.whl", hash = "sha256:9a79a6abf45256e6ad882d33eae293e68251a01a72d7d027cf8736a995b901e5", size = 29213, upload-time = "2025-10-14T00:52:51.922Z" },
 name = "uvicorn"
 version = "0.51.0"
 source = { registry = "https://pypi.org/simple" }

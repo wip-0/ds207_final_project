@@ -16,7 +16,7 @@ from pathlib import Path
 from copy import deepcopy
 from xgboost import XGBClassifier
 from sklearn.preprocessing import TargetEncoder, OrdinalEncoder
-from sklearn.metrics import roc_auc_score, accuracy_score, fbeta_score, f1_score, recall_score, precision_score, precision_recall_curve, auc, average_precision_score
+from sklearn.metrics import roc_auc_score, accuracy_score, fbeta_score, f1_score, recall_score, precision_score, precision_recall_curve, auc, average_precision_score, confusion_matrix
 from src.utils.data_fetch import DataLoader
 from src.stats import compare_adjacent_models
 from src.utils.model_eval.evaluation import evaluate_predictions
@@ -903,6 +903,17 @@ else:
     df_shap_model_mean = pd.read_csv(PATH_XGB_ANALYSIS / 'ana4_shap_model_mean.csv')
     df_shap_model_mean_abs = pd.read_csv(PATH_XGB_ANALYSIS / 'ana4_shap_model_mean_abs.csv')
 
+ax = sns.barplot(df_shap_concept_mean_abs, y='concept', x='mean_shap')
+ax.set_title('Average SHAP Feature Importance - By Concept Classification')
+plt.xticks()
+plt.tight_layout()
+plt.show()
+
+ax = sns.barplot(df_shap_model_mean_abs, y='group', x='mean_shap')
+ax.set_title('Average SHAP Feature Importance - By Group Classification')
+plt.xticks()
+plt.tight_layout()
+plt.show()
 
 # 5. Subgroup Dependency Analysis -------------------------------------------------------------------------------------------
 
@@ -946,7 +957,7 @@ if RUN_SHAP_DEPENDENCY:
     plt.show()
 
 
-# 6. Residual Analysis -------------------------------------------------------------------------------------------
+# 6. Error Analysis -------------------------------------------------------------------------------------------
 
 if RUN_RESIDUAL_ANA:
 
@@ -1022,6 +1033,125 @@ for c in num_cols_raw + dem_cols + clin_cols + diag_cols + other_cols:
                           .groupby([c, 'y'])
                           .agg({'residuals': ['mean', 'median', 'count'], 'abs_residuals': 'mean'}))
 
+df_resid['y_pred'] = (df_resid['y_hat'] >= 0.5) * 1
+
+def get_perf(x):
+    y = x['y']
+    y_pred = x['y_pred']
+    y_prob = x['y_hat']
+    recall = recall_score(y, y_pred)
+    precision = precision_score(y, y_pred)
+    accuracy = accuracy_score(y, y_pred)
+    roc_auc = roc_auc_score(y, y_prob)
+    prauc = average_precision_score(y, y_prob)
+    f1 = f1_score(y, y_pred)
+    f2 = fbeta_score(y, y_pred, beta=2)
+
+    n = len(x)
+    tp = ((y == 1) & (y_pred == 1)).sum() / n
+    tn = ((y == 0) & (y_pred == 0)).sum() / n
+    fp = ((y == 0) & (y_pred == 1)).sum() / n
+    fn = ((y == 1) & (y_pred == 0)).sum() / n
+
+    return pd.DataFrame({
+        'recall': recall,
+        'precision': precision,
+        'accuracy': accuracy,
+        'roc_auc': roc_auc,
+        'prauc': prauc,
+        'f1': f1,
+        'f2': f2,
+        'tp': tp,
+        'tn': tn,
+        'fp': fp,
+        'fn': fn,
+        'size': n,
+    }, index=[0])
+
+
+
+for c in clin_te_cols + diag_te_cols:
+    df_resid[c + '_qbin'] = pd.qcut(df_resid[c], 4, duplicates='drop')
+
+dict_resid_perf = dict()
+qbin_cols = [c + '_qbin' for c in clin_te_cols + diag_te_cols]
+for c in num_cols_raw + dem_cols + clin_cols + diag_cols + other_cols + qbin_cols:
+    print(c)
+    c = '__'.join(c.split('__')[1:]) if len(c.split('__')) > 1 else c
+    dict_resid_perf[c] = (df_resid[[c, 'y', 'y_hat', 'y_pred']]
+                          .groupby([c])
+                          .apply(get_perf))
+
+df_resid_perf = pd.DataFrame()
+cols_resid_perf = ['feature', 'value', 'recall', 'precision', 'accuracy', 'roc_auc', 'prauc', 'f1', 'f2', 'tp', 'tn', 'fp', 'fn', 'size']
+for k, v in dict_resid_perf.items():
+    df = v.reset_index().drop('level_1', axis=1)
+    df.columns = ['value', 'recall', 'precision', 'accuracy', 'roc_auc', 'prauc', 'f1', 'f2', 'tp', 'tn', 'fp', 'fn', 'size']
+    df['feature'] = k
+    df_resid_perf = pd.concat([df_resid_perf, df], axis=0, ignore_index=True)
+df_resid_perf = df_resid_perf[cols_resid_perf]
+
+df_resid_perf_agg = df_resid_perf.drop('value', axis=1).groupby('feature').apply(lambda x: x.drop('size', axis=1).mul(x['size'], axis=0).sum() / x['size'].sum())
+
+# Plot subgroup PRAUC box-plot
+fig, ax = plt.subplots(figsize=(12, 6))
+sns.boxplot(data=df_resid_perf, x='prauc',y='feature', color='lightgray', ax=ax)
+sns.scatterplot(data=df_resid_perf, x='prauc', y='feature', size='size', alpha=0.7, legend=False, ax=ax)
+plt.title('Subgroup PRAUC Bot-Plot')
+plt.tight_layout()
+plt.show()
+
+# Plot subgroup sample weighted PRAUC mean deviation
+df_resid_perf_agg['prauc_dev'] = df_resid_perf_agg['prauc'] - df_resid_perf_agg['prauc'].mean()
+ax = sns.barplot(df_resid_perf_agg.reset_index().sort_values('prauc_dev'), x='feature', y='prauc_dev')
+ax.set_title('Subgroup Sample Weighted PRAUC Mean Deviation')
+plt.xticks(rotation=90)
+plt.tight_layout()
+plt.show()
+
+# Plot number_inpatient PRAUC mean deviation
+df_num_in = df_resid_perf.loc[df_resid_perf['feature'] == 'number_inpatient']
+df_num_in['prauc_dev'] = df_num_in['prauc'] - df_num_in['prauc'].mean()
+fig, ax1 = plt.subplots(figsize=(12, 6))
+ax1.set_ylabel('PRAUC Mean Dev (Scatter)')
+ax2 = ax1.twinx()
+ax2.set_ylabel('Sample Size (Bar)')
+sns.barplot(data=df_num_in, x='value', y='size', color='lightgrey', alpha=0.5, ax=ax2)
+sns.scatterplot(data=df_num_in, x='value', y='prauc_dev', size='size', color='red', legend=False, ax=ax1)
+plt.title('PRAUC Mean Deviation with Sample Sizes (number_inpatient)')
+plt.xticks(rotation=90)
+plt.tight_layout()
+plt.show()
+
+# Further analysis with number_inpatient=0
+df_resid_inpat_0 = df_resid.loc[df_resid['number_inpatient'] == 0]
+dict_resid_perf_inpat_0 = dict()
+qbin_cols = [c + '_qbin' for c in clin_te_cols + diag_te_cols]
+for c in num_cols_raw + dem_cols + clin_cols + diag_cols + other_cols + qbin_cols:
+    print(c)
+    c = '__'.join(c.split('__')[1:]) if len(c.split('__')) > 1 else c
+    dict_resid_perf_inpat_0[c] = (df_resid_inpat_0[[c, 'y', 'y_hat', 'y_pred']]
+                          .groupby([c])
+                          .apply(get_perf))
+
+df_resid_perf_inpat_0 = pd.DataFrame()
+cols_resid_perf = ['feature', 'value', 'recall', 'precision', 'accuracy', 'roc_auc', 'prauc', 'f1', 'f2', 'tp', 'tn', 'fp', 'fn', 'size']
+for k, v in dict_resid_perf_inpat_0.items():
+    df = v.reset_index().drop('level_1', axis=1)
+    df.columns = ['value', 'recall', 'precision', 'accuracy', 'roc_auc', 'prauc', 'f1', 'f2', 'tp', 'tn', 'fp', 'fn', 'size']
+    df['feature'] = k
+    df_resid_perf_inpat_0 = pd.concat([df_resid_perf_inpat_0, df], axis=0, ignore_index=True)
+df_resid_perf_inpat_0 = df_resid_perf_inpat_0[cols_resid_perf]
+
+df_resid_perf_inpat_0_agg = df_resid_perf_inpat_0.drop('value', axis=1).groupby('feature').apply(lambda x: x.drop('size', axis=1).mul(x['size'], axis=0).sum() / x['size'].sum())
+
+# Plot subgroup sample weighted PRAUC mean deviation
+df_resid_perf_inpat_0_agg['prauc_dev'] = df_resid_perf_inpat_0_agg['prauc'] - df_resid_perf_inpat_0_agg['prauc'].mean()
+ax = sns.barplot(df_resid_perf_inpat_0_agg.reset_index().sort_values('prauc_dev'), x='feature', y='prauc_dev')
+ax.set_title('Subgroup Sample Weighted PRAUC Mean Deviation (number_inpatient=0)')
+plt.xticks(rotation=90)
+plt.tight_layout()
+plt.show()
 
 # 7. Interaction Analysis -------------------------------------------------------------------------------------------
 
@@ -1087,3 +1217,84 @@ ax = sns.heatmap(df_interaction_copy, mask=mask, cmap='coolwarm')
 ax.set_title('SHAP Feature Importance Mean Interaction Heatmap')
 plt.tight_layout()
 plt.show()
+
+# Final model M10 -----------------------------------------------------------------
+
+DICT_PREFIX.update({'m10': 'xgboost_final'})
+
+# XGBoost training output holder
+DICT_PATH_PARAM        = {k: v + '_' + f'params_{TUNE_METRIC}.json' for k, v in DICT_PREFIX.items()}
+DICT_PATH_LOG_OUTPUT   = {k: v + '_' + f'log_{TUNE_METRIC}.csv' for k    , v in DICT_PREFIX.items()}
+DICT_PATH_PROB_OUTPUT  = {k: v + '_' + f'prob_{TUNE_METRIC}.json' for k  , v in DICT_PREFIX.items()}
+DICT_PATH_MODEL_OUTPUT = {k: v + '_' + f'model_{TUNE_METRIC}.json' for k , v in DICT_PREFIX.items()}
+DICT_ADDED_FEATURES['m10'] = 'Final'
+
+k = 'm10'
+
+# Tuning log
+DICT_LOG_OUTPUT.update({k: pd.read_csv(PATH_XGB / DICT_PATH_LOG_OUTPUT[k])})
+
+# Tuned model
+DICT_MODEL_OUTPUT.update({k: joblib.load(PATH_XGB / DICT_PATH_MODEL_OUTPUT[k])})
+
+# Tuned probability threshold
+with open(PATH_XGB / DICT_PATH_PROB_OUTPUT[k], 'r') as f:
+    DICT_PROB_OUTPUT[k] = json.load(f)['best_th']
+
+# Tuned parameters
+with open(PATH_XGB / DICT_PATH_PARAM[k], 'r') as f:
+    best_params = json.load(f)
+final_params = deepcopy(fixed_params)
+final_params.update(best_params)
+final_params.update({"device": "cpu"})
+DICT_PARAM[k] = final_params
+
+model = DICT_MODEL_OUTPUT[k]
+features = model.feature_names_in_
+y_prob_train = model.predict_proba(X_train[features])[:, 1]
+y_pred_train = model.predict(X_train[features])
+y_prob_val = model.predict_proba(X_val[features])[:, 1]
+y_pred_val = model.predict(X_val[features])
+y_prob_test = model.predict_proba(X_test[features])[:, 1]
+y_pred_test = model.predict(X_test[features])
+
+df_perf_train_m10 = pd.DataFrame(dict(
+    model        = k,
+    new_features = DICT_ADDED_FEATURES[k],
+    recall       = recall_score(y_train           , y_pred_train),
+    precision    = precision_score(y_train        , y_pred_train),
+    accuracy     = accuracy_score(y_train         , y_pred_train),
+    roc_auc      = roc_auc_score(y_train          , y_prob_train),
+    prauc        = average_precision_score(y_train, y_prob_train),
+    f1           = f1_score(y_train               , y_pred_train),
+    f2           = fbeta_score(y_train            , y_pred_train , beta = 2),
+), index=['train'])
+
+df_perf_val_m10 = pd.DataFrame(dict(
+    model        = k,
+    new_features = DICT_ADDED_FEATURES[k],
+    recall       = recall_score(y_val           , y_pred_val),
+    precision    = precision_score(y_val        , y_pred_val),
+    accuracy     = accuracy_score(y_val         , y_pred_val),
+    roc_auc      = roc_auc_score(y_val          , y_prob_val),
+    prauc        = average_precision_score(y_val, y_prob_val),
+    f1           = f1_score(y_val               , y_pred_val),
+    f2           = fbeta_score(y_val            , y_pred_val , beta = 2),
+), index=['val'])
+
+df_perf_test_m10 = pd.DataFrame(dict(
+    model        = k,
+    new_features = DICT_ADDED_FEATURES[k],
+    recall       = recall_score(y_test           , y_pred_test),
+    precision    = precision_score(y_test        , y_pred_test),
+    accuracy     = accuracy_score(y_test         , y_pred_test),
+    roc_auc      = roc_auc_score(y_test          , y_prob_test),
+    prauc        = average_precision_score(y_test, y_prob_test),
+    f1           = f1_score(y_test               , y_pred_test),
+    f2           = fbeta_score(y_test            , y_pred_test , beta = 2),
+), index=['test'])
+
+df_perf_m10 = pd.concat([df_perf_train_m10, df_perf_val_m10, df_perf_test_m10], axis=0)
+
+print(df_perf_m10)
+print(DICT_PARAM[k])

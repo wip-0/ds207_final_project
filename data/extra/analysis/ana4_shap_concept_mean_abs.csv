@@ -1,0 +1,14 @@
+concept,mean_shap
+Hospital Visit [Raw],0.38009676
+Diagnosis (Target-Encoded)[Raw],0.1923759
+Clinical (Target-Encoded)[Raw],0.1172352
+Utilization [Raw],0.09912834
+Other (Payer Code)[Raw],0.07625585
+Diagnosis [Grouped],0.071404
+Demographics [Raw],0.0692558
+Clinical (Operation)[Grouped],0.06453161
+Medication [Raw],0.044384256
+Other (Weight)[Raw],0.030337818
+Clinical (Assessment)[Raw],0.029222596
+Medication (Distinct Count)[Grouped],0.027300823
+Medication (Change Count)[Grouped],0.012045085
